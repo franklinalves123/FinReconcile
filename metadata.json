@@ -1,0 +1,5 @@
+{
+  "name": "FinReconcile AI",
+  "description": "Ferramenta de conciliação de faturas de cartão de crédito com IA que extrai, categoriza e combina transações automaticamente usando Gemini.",
+  "requestFramePermissions": []
+}
