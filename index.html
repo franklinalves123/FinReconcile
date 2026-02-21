@@ -11,15 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
-      // Configuração Global de Ambiente (Essencial para não dar erro no navegador em hospedagens como cPanel)
-      window.process = { 
-        env: { 
-          NODE_ENV: 'production',
-          API_KEY: 'AIzaSyB9101BLDbYmqRZdkvZlRbdUu9gE0rGrco'
-        } 
-      };
-      
-      // Define a variável global para compatibilidade com bibliotecas que esperam 'process'
+      // Shim mínimo para libs que referenciam process.env no browser (sem segredos aqui)
+      window.process = window.process || { env: { NODE_ENV: 'production' } };
       var process = window.process;
 
       tailwind.config = {

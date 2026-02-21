@@ -25,3 +25,7 @@ dist-ssr
 
 # macOS AppleDouble
 ._*
+
+# Variáveis de ambiente locais — NUNCA versionar
+.env.local
+.env.*.local

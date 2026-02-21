@@ -3,15 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 
 /**
  * CONFIGURAÇÃO DE CONEXÃO SUPABASE
- * Dados inseridos conforme fornecido pelo usuário.
+ * Lê credenciais de variáveis de ambiente Vite (.env.local — não versionado).
+ * A anon key é pública por design; o RLS do Supabase garante isolamento de dados.
+ * Copie .env.local.example para .env.local e preencha os valores.
  */
-const SUPABASE_URL = 'https://neyioqyyfefgioqgcyvq.supabase.co'; 
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5leWlvcXl5ZmVmZ2lvcWdjeXZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyMzI5NDEsImV4cCI6MjA4MTgwODk0MX0.yh_sPFk3oDmVNaSQ5gBeiOyMOUtOrMU9-zT2Ax9VHIM';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 // Lógica resiliente para inicialização
 const initSupabase = () => {
   try {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('SUA_URL')) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       console.warn("Supabase não configurado ou chaves pendentes.");
       return null;
     }
