@@ -24,6 +24,14 @@ export default async function handler(req: any, res: any) {
             return res.end(JSON.stringify({ error: 'Missing email or password' }))
         }
 
+        // sanity check: ping supabase
+        const health = await fetch(`${supabaseUrl}/auth/v1/health`, { method: 'GET' }).catch((e) => e)
+        if (health instanceof Error) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            return res.end(JSON.stringify({ error: 'Supabase unreachable', supabaseUrl, message: String(health.message || health) }))
+        }
+
         const url = `${supabaseUrl}/auth/v1/token?grant_type=password`
 
         const r = await fetch(url, {
