@@ -16,13 +16,16 @@ export const Auth: React.FC = () => {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ 
-        email: email, 
-        password: password 
+      const r = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
-      
-      if (error) {
-        throw error;
+
+      const data = await r.json().catch(() => ({} as any));
+
+      if (!r.ok) {
+        throw new Error(data?.error_description || data?.error || 'Falha no login');
       }
     } catch (err: any) {
       console.error("Erro de Auth:", err);
@@ -84,7 +87,7 @@ export const Auth: React.FC = () => {
             <LogIn size={18} className="mr-2" /> Entrar no Sistema
           </Button>
         </form>
-        
+
         <p className="mt-6 text-center text-[10px] text-neutral-400">
           Acesso restrito a usuários autorizados.
         </p>
