@@ -1,45 +1,49 @@
-export default async function handler(req: Request): Promise<Response> {
-    if (req.method !== 'POST') {
-        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-            status: 405,
-            headers: { 'Content-Type': 'application/json' },
+export default async function handler(req: any, res: any) {
+    try {
+        if (req.method !== 'POST') {
+            res.statusCode = 405
+            res.setHeader('Content-Type', 'application/json')
+            return res.end(JSON.stringify({ error: 'Method not allowed' }))
+        }
+
+        const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+        const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+
+        if (!supabaseUrl || !supabaseAnonKey) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            return res.end(JSON.stringify({ error: 'Server missing Supabase env vars' }))
+        }
+
+        // Vercel já faz parse de JSON quando Content-Type é application/json
+        const { email, password } = req.body || {}
+
+        if (!email || !password) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'application/json')
+            return res.end(JSON.stringify({ error: 'Missing email or password' }))
+        }
+
+        const url = `${supabaseUrl}/auth/v1/token?grant_type=password`
+
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                apikey: supabaseAnonKey,
+                Authorization: `Bearer ${supabaseAnonKey}`,
+            },
+            body: JSON.stringify({ email, password }),
         })
+
+        const data = await r.json().catch(() => ({}))
+
+        res.statusCode = r.status
+        res.setHeader('Content-Type', 'application/json')
+        return res.end(JSON.stringify(data))
+    } catch (e: any) {
+        res.statusCode = 500
+        res.setHeader('Content-Type', 'application/json')
+        return res.end(JSON.stringify({ error: 'Function crashed', message: String(e?.message || e) }))
     }
-
-    const { email, password } = await req.json().catch(() => ({} as any))
-
-    const supabaseUrl = process.env.VITE_SUPABASE_URL
-    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
-
-    if (!email || !password) {
-        return new Response(JSON.stringify({ error: 'Missing email or password' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-        })
-    }
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-        return new Response(JSON.stringify({ error: 'Server missing Supabase env vars' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        })
-    }
-
-    const url = `${supabaseUrl}/auth/v1/token?grant_type=password`
-
-    const r = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            apikey: supabaseAnonKey,
-            Authorization: `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({ email, password }),
-    })
-
-    const data = await r.json().catch(() => ({}))
-    return new Response(JSON.stringify(data), {
-        status: r.status,
-        headers: { 'Content-Type': 'application/json' },
-    })
 }
