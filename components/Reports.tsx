@@ -112,6 +112,11 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
     return { total: currentTotal, variation };
   }, [filteredData, selectedCycle, availableCycles, allTransactions, selectedTag]);
 
+  const filteredTotal = useMemo(
+    () => filteredData.reduce((s, t) => s + (Number(t.amount) || 0), 0),
+    [filteredData]
+  );
+
   const handleExportCSV = () => {
     const rows = filteredData.map(t => [
       t.purchaseDate || t.date || '',
@@ -374,6 +379,17 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                           ))
                         )}
                     </tbody>
+                    <tfoot>
+                      <tr className="bg-neutral-50 border-t border-neutral-200">
+                        <td colSpan={3} className="px-6 py-3 text-xs text-neutral-500">
+                          {filteredData.length} lançamento{filteredData.length !== 1 ? 's' : ''}
+                        </td>
+                        <td className="px-6 py-3 text-right font-black text-neutral-900 text-sm">
+                          {filteredTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
                 </table>
                 {filteredData.length > 100 && (
                     <div className="p-4 text-center text-xs text-neutral-400 italic">
