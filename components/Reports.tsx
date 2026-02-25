@@ -112,6 +112,25 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
     return { total: currentTotal, variation };
   }, [filteredData, selectedCycle, availableCycles, allTransactions, selectedTag]);
 
+  const handleExportCSV = () => {
+    const rows = filteredData.map(t => [
+      t.purchaseDate || t.date || '',
+      `"${(t.description || '').replace(/"/g, '""')}"`,
+      t.cardIssuer || '',
+      t.amount.toFixed(2).replace('.', ','),
+      t.category || '',
+      t.subcategory || ''
+    ].join(';'));
+    const csv = ['Data;Descrição;Banco;Valor;Categoria;Subcategoria', ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finreconcile-${selectedCycle === 'all' ? 'todos' : selectedCycle}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       {/* Header com Filtros */}
@@ -186,7 +205,28 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
             )}
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 md:col-span-2">
+        {/* Top Categoria */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 flex flex-col justify-between">
+            <span className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2">Top Categoria</span>
+            {categoryStats.length > 0 ? (
+              <>
+                <div>
+                  <h4 className="text-xl font-black text-neutral-900 truncate">{categoryStats[0].name}</h4>
+                  <p className="text-sm font-bold text-primary mt-1">
+                    {categoryStats[0].total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+                <div className="mt-4 text-xs text-neutral-400">
+                  {((categoryStats[0].total / (totals.total || 1)) * 100).toFixed(0)}% do total do período
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-neutral-300 mt-2">—</p>
+            )}
+        </div>
+
+        {/* Evolução */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100">
             <span className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-4 block">Evolução de Gastos (Últimos 12 Meses)</span>
             <div className="h-32">
                 <ResponsiveContainer width="100%" height="100%">
@@ -206,7 +246,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                 </ResponsiveContainer>
             </div>
         </div>
-      </div>
+      </div> {/* end summary grid */}
 
       {viewMode === 'visual' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -286,8 +326,8 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
         <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-neutral-50 bg-neutral-50/50 flex justify-between items-center">
                 <h4 className="text-sm font-bold text-neutral-800">Listagem Analítica</h4>
-                <Button variant="outline" size="sm" onClick={() => window.print()}>
-                    <Download size={14} className="mr-2"/> Exportar PDF
+                <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={filteredData.length === 0}>
+                    <Download size={14} className="mr-2"/> Exportar CSV
                 </Button>
             </div>
             <div className="overflow-x-auto">
@@ -296,10 +336,10 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                         <tr className="bg-neutral-50 text-[10px] uppercase font-black text-neutral-400 tracking-tighter">
                             <th className="px-6 py-4">Data</th>
                             <th className="px-6 py-4">Descrição</th>
+                            <th className="px-6 py-4">Banco</th>
+                            <th className="px-6 py-4 text-right">Valor</th>
                             <th className="px-6 py-4">Categoria</th>
                             <th className="px-6 py-4">Subcategoria</th>
-                            <th className="px-6 py-4">Tags</th>
-                            <th className="px-6 py-4 text-right">Valor</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-50">
@@ -316,25 +356,19 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                                   <td className="px-6 py-3 text-sm font-bold text-neutral-800 truncate max-w-[200px]">
                                       {t.description}
                                   </td>
+                                  <td className="px-6 py-3 text-xs font-bold uppercase text-neutral-400">
+                                      {t.cardIssuer || '—'}
+                                  </td>
+                                  <td className="px-6 py-3 text-right font-black text-neutral-900">
+                                      {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  </td>
                                   <td className="px-6 py-3">
                                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-primary uppercase">
                                           {t.category}
                                       </span>
                                   </td>
                                   <td className="px-6 py-3 text-xs text-neutral-400">
-                                      {t.subcategory || '-'}
-                                  </td>
-                                  <td className="px-6 py-3">
-                                      <div className="flex flex-wrap gap-1">
-                                        {t.tags?.map(tag => (
-                                          <span key={tag} className="text-[8px] bg-neutral-100 px-1.5 py-0.5 rounded font-bold text-neutral-500 uppercase">
-                                            {tag}
-                                          </span>
-                                        ))}
-                                      </div>
-                                  </td>
-                                  <td className="px-6 py-3 text-right font-black text-neutral-900">
-                                      {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                      {t.subcategory || '—'}
                                   </td>
                               </tr>
                           ))
