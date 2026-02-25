@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard, List } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { Upload } from './components/Upload.tsx';
@@ -11,6 +11,7 @@ import { Settings } from './components/Settings.tsx';
 import { ManualEntry } from './components/ManualEntry.tsx';
 import { Reports } from './components/Reports.tsx';
 import { Invoices } from './components/Invoices.tsx';
+import { Transactions } from './components/Transactions.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
 import { categorizeTransactions, extractInvoiceData } from './services/ai/index.ts';
@@ -154,16 +155,26 @@ const AppContent: React.FC = () => {
 
   const handleDeleteInvoice = async (invoiceId: string) => {
     if (!user) return;
-    if (!confirm("Apagar esta fatura permanentemente?")) return;
-    
     try {
       setIsProcessing(true);
       await dataService.deleteInvoice(invoiceId, user.id);
       await loadData();
-    } catch (e) {
-      alert("Erro ao excluir.");
+      setToast({ message: 'Fatura e transações excluídas com sucesso.', type: 'success' });
+    } catch (e: any) {
+      setToast({ message: 'Erro ao excluir fatura: ' + (e.message || 'verifique sua conexão.'), type: 'error' });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    if (!user) return;
+    try {
+      await dataService.deleteTransaction(transactionId, user.id);
+      setAllHistoryTransactions(prev => prev.filter(t => t.id !== transactionId));
+      setToast({ message: 'Lançamento excluído com sucesso.', type: 'success' });
+    } catch (e: any) {
+      setToast({ message: 'Erro ao excluir: ' + (e.message || 'verifique sua conexão.'), type: 'error' });
     }
   };
 
@@ -221,6 +232,7 @@ const AppContent: React.FC = () => {
           <SidebarItem to="/upload" icon={<UploadIcon size={20}/>} label="Importar" active={location.pathname === '/upload'} />
           <SidebarItem to="/invoices" icon={<FileText size={20}/>} label="Faturas" active={location.pathname === '/invoices'} />
           <SidebarItem to="/manual" icon={<PlusSquare size={20}/>} label="Manual" active={location.pathname === '/manual'} />
+          <SidebarItem to="/transactions" icon={<List size={20}/>} label="Transações" active={location.pathname === '/transactions'} />
           <SidebarItem to="/reports" icon={<PieChart size={20}/>} label="Relatórios" active={location.pathname === '/reports'} />
         </nav>
         <div className="p-4 border-t">
@@ -249,19 +261,21 @@ const AppContent: React.FC = () => {
            <Routes>
              <Route path="/" element={<Dashboard files={files} allTransactions={[...allHistoryTransactions, ...transactions]} onNavigate={navigate} />} />
              <Route path="/upload" element={<Upload onUploadComplete={handleUploadComplete} onCancel={() => navigate('/')} />} />
-             <Route path="/invoices" element={<Invoices files={files} onDelete={handleDeleteInvoice} />} />
-             <Route path="/manual" element={<ManualEntry categories={categories} tags={tags} onAddTransaction={async (t) => {
+             <Route path="/invoices" element={<Invoices files={files} allTransactions={allHistoryTransactions} onDelete={handleDeleteInvoice} onNavigateToUpload={() => navigate('/upload')} />} />
+             <Route path="/manual" element={<ManualEntry categories={categories} tags={tags} onUpdateCategories={handleUpdateCategories} onAddTransaction={async (t) => {
                setIsProcessing(true);
                try {
                  await dataService.saveTransactions([t], user.id);
                  await loadData();
-                 navigate('/');
+                 setToast({ message: 'Lançamento salvo com sucesso!', type: 'success' });
                } catch (e: any) {
-                 alert("Erro: " + e.message);
+                 setToast({ message: 'Erro ao salvar: ' + (e.message || 'verifique sua conexão.'), type: 'error' });
+                 throw e;
                } finally {
                  setIsProcessing(false);
                }
              }} onCancel={() => navigate('/')} />} />
+             <Route path="/transactions" element={<Transactions transactions={allHistoryTransactions} onDeleteTransaction={handleDeleteTransaction} onNavigateToUpload={() => navigate('/upload')} />} />
              <Route path="/review" element={<Review 
                 transactions={transactions} 
                 categories={categories} 

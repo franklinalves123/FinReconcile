@@ -125,6 +125,19 @@ export const dataService = {
     }
   },
 
+  async deleteTransaction(transactionId: string, userId: string) {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', transactionId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error("Erro Supabase ao excluir transação:", error.message);
+      throw error;
+    }
+  },
+
   async deleteInvoice(invoiceId: string, userId: string) {
     // Apaga transações associadas antes da fatura (guard para ambientes sem ON DELETE CASCADE)
     await supabase
