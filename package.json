@@ -15,9 +15,7 @@
     "@google/genai": "^1.34.0",
     "recharts": "^3.6.0",
     "lucide-react": "^0.562.0",
-    "@supabase/supabase-js": "^2.89.0",
-    "vite": "^7.3.0",
-    "@vitejs/plugin-react": "^5.1.2"
+    "@supabase/supabase-js": "^2.89.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

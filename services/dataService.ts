@@ -54,10 +54,14 @@ export const dataService = {
       notes: t.notes
     }));
 
-    const { error } = await supabase.from('transactions').insert(txsToSave);
+    const { error } = await supabase
+      .from('transactions')
+      .upsert(txsToSave, {
+        onConflict: 'user_id,purchase_date,description,amount',
+        ignoreDuplicates: true
+      });
     if (error) {
       console.error("Erro Supabase ao inserir transações:", error.message);
-      // Se o erro persistir dizendo que a coluna não existe, o Passo 1 (SQL) é obrigatório
       throw error;
     }
   },
@@ -101,6 +105,13 @@ export const dataService = {
   },
 
   async deleteInvoice(invoiceId: string, userId: string) {
+    // Apaga transações associadas antes da fatura (guard para ambientes sem ON DELETE CASCADE)
+    await supabase
+      .from('transactions')
+      .delete()
+      .eq('invoice_id', invoiceId)
+      .eq('user_id', userId);
+
     const { error } = await supabase
       .from('invoices')
       .delete()

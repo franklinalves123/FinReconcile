@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { CheckCircle, TrendingUp, Calendar, CreditCard, ExternalLink, ArrowRightLeft, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { InvoiceFile, Transaction } from '../types.ts';
 import { Button } from './ui/Button.tsx';
+import { buildInvoiceDateMap, getCycleInfo } from '../lib/cycleUtils.ts';
 
 interface DashboardProps {
   files: InvoiceFile[];
@@ -16,48 +17,14 @@ const COLORS = ['#0B5FFF', '#00C853', '#FFB300', '#FF8042', '#8884d8', '#EC4899'
 export const Dashboard: React.FC<DashboardProps> = ({ files, allTransactions, onNavigate }) => {
   const [viewMode, setViewMode] = useState<'cycle' | 'calendar'>('cycle');
 
-  // Mapeia IDs de fatura para suas datas de importação (upload)
-  const invoiceDateMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    files.forEach(f => {
-      if (f.id) {
-        const date = new Date(f.uploadDate);
-        map[f.id] = date.toISOString().split('T')[0];
-      }
-    });
-    return map;
-  }, [files]);
-
-  // Função central: Determina o Ciclo baseado EXCLUSIVAMENTE na Data de Importação
-  const getCycleInfo = (t: Transaction) => {
-    let refDateStr = '';
-    
-    // Regra: Se tem fatura, manda a data de importação. Se for manual, manda a data da compra.
-    if (t.invoiceId && invoiceDateMap[t.invoiceId]) {
-      refDateStr = invoiceDateMap[t.invoiceId];
-    } else {
-      refDateStr = t.purchaseDate || t.date;
-    }
-
-    if (!refDateStr) return { label: 'Sem Ciclo', order: 0 };
-
-    const refDate = new Date(refDateStr);
-    const month = refDate.getUTCMonth();
-    const year = refDate.getUTCFullYear();
-
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return {
-      label: `${monthNames[month]}/${year.toString().slice(-2)}`,
-      order: year * 100 + month
-    };
-  };
+  const invoiceDateMap = useMemo(() => buildInvoiceDateMap(files), [files]);
 
   // Agrupamento por Ciclo de Importação/Pagamento
   const cycleData = useMemo(() => {
     const map: Record<string, { total: number, order: number }> = {};
     
     allTransactions.forEach(t => {
-      const { label, order } = getCycleInfo(t);
+      const { label, order } = getCycleInfo(t, invoiceDateMap);
       if (!map[label]) map[label] = { total: 0, order };
       map[label].total += Number(t.amount || 0);
     });
@@ -70,7 +37,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ files, allTransactions, on
 
   const stats = useMemo(() => {
     const currentCycleLabel = cycleData[cycleData.length - 1]?.name || '';
-    const filtered = allTransactions.filter(t => getCycleInfo(t).label === currentCycleLabel);
+    const filtered = allTransactions.filter(t => getCycleInfo(t, invoiceDateMap).label === currentCycleLabel);
     
     const totalSpend = filtered.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
     const catMap: Record<string, number> = {};

@@ -16,24 +16,10 @@ export const Auth: React.FC = () => {
     setError(null);
 
     try {
-      const r = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await r.json().catch(() => ({} as any));
-
-      if (!r.ok) {
-        throw new Error(data?.error_description || data?.error || 'Falha no login');
-      }
-      // sucesso: salva tokens e redireciona
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('refresh_token', data.refresh_token);
-
-      setLoading(false);
-      window.location.assign('/dashboard');
-      return;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // Sucesso: AuthContext.onAuthStateChange detecta a sessão e o App.tsx
+      // exibe o app automaticamente — nenhum redirect manual necessário.
     } catch (err: any) {
       console.error("Erro de Auth:", err);
       setError('E-mail ou senha incorretos. Verifique suas credenciais.');

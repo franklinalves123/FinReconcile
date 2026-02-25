@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Transaction, Category, Tag, InvoiceFile } from '../types.ts';
+import { buildInvoiceDateMap, getCycleInfo } from '../lib/cycleUtils.ts';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
@@ -28,42 +29,12 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'visual' | 'table'>('visual');
 
-  // Mapeia IDs de fatura para suas datas de importação (upload)
-  const invoiceDateMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    files.forEach(f => {
-      const date = new Date(f.uploadDate);
-      map[f.id] = date.toISOString().split('T')[0];
-    });
-    return map;
-  }, [files]);
-
-  // Função centralizada de Ciclo (Importação)
-  const getCycleInfo = (t: Transaction) => {
-    let refDateStr = '';
-    if (t.invoiceId && invoiceDateMap[t.invoiceId]) {
-      refDateStr = invoiceDateMap[t.invoiceId];
-    } else {
-      refDateStr = t.purchaseDate || t.date;
-    }
-
-    if (!refDateStr) return { label: 'Sem Ciclo', order: 0 };
-
-    const refDate = new Date(refDateStr);
-    const month = refDate.getUTCMonth();
-    const year = refDate.getUTCFullYear();
-
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return {
-      label: `${monthNames[month]}/${year.toString().slice(-2)}`,
-      order: year * 100 + month
-    };
-  };
+  const invoiceDateMap = useMemo(() => buildInvoiceDateMap(files), [files]);
 
   // Lista de ciclos disponíveis para filtro
   const availableCycles = useMemo(() => {
     const set = new Set<string>();
-    allTransactions.forEach(t => set.add(getCycleInfo(t).label));
+    allTransactions.forEach(t => set.add(getCycleInfo(t, invoiceDateMap).label));
     return Array.from(set).sort((a, b) => {
         const [mA, yA] = a.split('/');
         const [mB, yB] = b.split('/');
@@ -76,7 +47,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
   const filteredData = useMemo(() => {
     return allTransactions.filter(t => {
       const matchesSearch = searchTerm === '' || t.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCycle = selectedCycle === 'all' || getCycleInfo(t).label === selectedCycle;
+      const matchesCycle = selectedCycle === 'all' || getCycleInfo(t, invoiceDateMap).label === selectedCycle;
       const matchesTag = selectedTag === 'all' || (t.tags && t.tags.includes(selectedTag));
       return matchesSearch && matchesCycle && matchesTag;
     });
@@ -89,7 +60,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
       // Aplicar filtro de tag no gráfico de evolução também se uma tag estiver selecionada
       if (selectedTag !== 'all' && (!t.tags || !t.tags.includes(selectedTag))) return;
 
-      const { label, order } = getCycleInfo(t);
+      const { label, order } = getCycleInfo(t, invoiceDateMap);
       if (!map[label]) map[label] = { total: 0, order };
       map[label].total += Number(t.amount || 0);
     });
@@ -129,7 +100,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
         if (prevCycle) {
             const prevTotal = allTransactions
                 .filter(t => {
-                  const matchesCycle = getCycleInfo(t).label === prevCycle;
+                  const matchesCycle = getCycleInfo(t, invoiceDateMap).label === prevCycle;
                   const matchesTag = selectedTag === 'all' || (t.tags && t.tags.includes(selectedTag));
                   return matchesCycle && matchesTag;
                 })
