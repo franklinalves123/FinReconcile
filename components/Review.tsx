@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Transaction, SortConfig, Category, CardIssuer, Tag } from '../types.ts';
 import { Check, Edit2, ArrowRight, X, Save, CreditCard, Tag as TagIcon, Layers, Trash2, Plus, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/Button.tsx';
+import { parseBRLAmount } from '../services/dataService.ts';
 
 interface ReviewProps {
   transactions: Transaction[];
@@ -109,7 +110,7 @@ export const Review: React.FC<ReviewProps> = ({
         date: editDate,
         purchaseDate: editPurchaseDate,
         description: editDesc,
-        amount: parseFloat(editAmount),
+        amount: parseBRLAmount(editAmount),
         category: editCategory,
         subcategory: editSubcategory,
         cardIssuer: editIssuer,

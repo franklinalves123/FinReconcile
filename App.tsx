@@ -12,10 +12,11 @@ import { ManualEntry } from './components/ManualEntry.tsx';
 import { Reports } from './components/Reports.tsx';
 import { Invoices } from './components/Invoices.tsx';
 import { Auth } from './components/Auth.tsx';
-import { dataService } from './services/dataService.ts';
+import { dataService, parseBRLAmount } from './services/dataService.ts';
 import { categorizeTransactions, extractInvoiceData } from './services/ai/index.ts';
 import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction } from './types.ts';
 import { INITIAL_CATEGORIES, DEFAULT_TAGS } from './constants/initialData.ts';
+import { Toast, ToastMessage } from './components/ui/Toast.tsx';
 
 const AppContent: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -30,6 +31,7 @@ const AppContent: React.FC = () => {
   const [tags, setTags] = useState<Tag[]>(DEFAULT_TAGS);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentFileEntry, setCurrentFileEntry] = useState<InvoiceFile | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   useEffect(() => {
     if (user) loadData();
@@ -128,7 +130,7 @@ const AppContent: React.FC = () => {
           date: item.purchaseDate,
           purchaseDate: item.purchaseDate,
           description: item.description,
-          amount: item.amount,
+          amount: parseBRLAmount(item.amount),
           category: suggestion?.suggestedCategory || 'Outros',
           subcategory: suggestion?.suggestedSubcategory,
           confidence: suggestion?.confidence,
@@ -167,34 +169,37 @@ const AppContent: React.FC = () => {
 
   const handleAutoFinalizeExtraction = async () => {
     if (!user || !currentFileEntry || transactions.length === 0) return;
-    
+
     setIsProcessing(true);
     try {
-      // Marcar todas como conciliadas automaticamente
       const finalizedTransactions = transactions.map(t => ({
         ...t,
         status: MatchStatus.MATCHED
       }));
 
-      // Salvar a fatura
       await dataService.saveInvoice({
         ...currentFileEntry,
         transactionCount: finalizedTransactions.length
       }, user.id);
 
-      // Salvar todas as transações de uma vez
       await dataService.saveTransactions(finalizedTransactions, user.id);
-      
-      // Recarregar histórico e limpar estados temporários
+
       await loadData();
       setTransactions([]);
       setCurrentFileEntry(null);
-      
-      // Voltar para o Dashboard
+
+      setToast({
+        message: `${finalizedTransactions.length} lançamento${finalizedTransactions.length !== 1 ? 's' : ''} salvo${finalizedTransactions.length !== 1 ? 's' : ''} com sucesso!`,
+        type: 'success'
+      });
+
       navigate('/');
     } catch (e: any) {
-      console.error("Erro ao finalizar automaticamente:", e);
-      alert("Erro ao salvar os lançamentos: " + e.message);
+      console.error("Erro ao finalizar extração:", e);
+      setToast({
+        message: 'Erro ao salvar lançamentos: ' + (e.message || 'verifique sua conexão e tente novamente.'),
+        type: 'error'
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -204,6 +209,7 @@ const AppContent: React.FC = () => {
   if (!user) return <Auth />;
 
   return (
+    <>
     <div className="flex h-screen bg-[#F6F7FB] overflow-hidden">
       <aside className="w-64 bg-white border-r border-neutral-200 flex flex-col shadow-sm">
         <div className="p-6 flex items-center gap-3">
@@ -293,6 +299,8 @@ const AppContent: React.FC = () => {
         </div>
       </main>
     </div>
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
+    </>
   );
 };
 

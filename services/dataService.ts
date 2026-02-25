@@ -3,6 +3,26 @@ import { supabase } from '../lib/supabase.ts';
 import { Transaction, Category, Tag, InvoiceFile } from '../types.ts';
 
 /**
+ * Converte valor monetário em formato BR para number.
+ * Exemplos:
+ *   'R$ 1.500,00' → 1500.00
+ *   '1.500,50'    → 1500.50
+ *   1500          → 1500
+ *   '1500.00'     → 1500.00  (formato EN também funciona)
+ */
+export function parseBRLAmount(value: unknown): number {
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+  if (typeof value !== 'string') return 0;
+  const cleaned = value
+    .replace(/R\$\s*/g, '')   // remove prefixo "R$ "
+    .replace(/\s/g, '')        // remove espaços restantes
+    .replace(/\./g, '')        // remove separador de milhar BR
+    .replace(',', '.');        // converte decimal BR → decimal EN
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+/**
  * SERVIÇO DE DADOS RESILIENTE
  * Usamos mapeamento explícito para evitar erros de 'schema cache' do Supabase
  */
@@ -45,7 +65,8 @@ export const dataService = {
       invoice_id: (t.invoiceId === 'manual-entry' || !t.invoiceId) ? null : t.invoiceId,
       purchase_date: t.purchaseDate,
       description: t.description,
-      amount: t.amount,
+      // parseBRLAmount garante número limpo independente do formato da IA
+      amount: parseBRLAmount(t.amount),
       category: t.category,
       subcategory: t.subcategory,
       tags: t.tags || [],
