@@ -16,7 +16,7 @@ import { Wallet } from './components/Wallet.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
 import { categorizeTransactions, extractInvoiceData } from './services/ai/index.ts';
-import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction } from './types.ts';
+import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard } from './types.ts';
 import { INITIAL_CATEGORIES, DEFAULT_TAGS } from './constants/initialData.ts';
 import { Toast, ToastMessage } from './components/ui/Toast.tsx';
 
@@ -31,6 +31,8 @@ const AppContent: React.FC = () => {
   const [systemTransactions, setSystemTransactions] = useState<SystemTransaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [tags, setTags] = useState<Tag[]>(DEFAULT_TAGS);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentFileEntry, setCurrentFileEntry] = useState<InvoiceFile | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -42,14 +44,18 @@ const AppContent: React.FC = () => {
   const loadData = async () => {
     if (!user) return;
     try {
-      const [txs, invoices, settings] = await Promise.all([
+      const [txs, invoices, settings, accs, cards] = await Promise.all([
         dataService.getTransactions(user.id),
         dataService.getInvoices(user.id),
-        dataService.getUserSettings(user.id)
+        dataService.getUserSettings(user.id),
+        dataService.getAccounts(user.id),
+        dataService.getCreditCards(user.id),
       ]);
 
       if (txs) setAllHistoryTransactions(txs);
       if (invoices) setFiles(invoices);
+      setAccounts(accs);
+      setCreditCards(cards);
       
       if (settings) {
         if (Array.isArray(settings.categories) && settings.categories.length > 0) {
@@ -264,7 +270,7 @@ const AppContent: React.FC = () => {
              <Route path="/" element={<Dashboard files={files} allTransactions={[...allHistoryTransactions, ...transactions]} onNavigate={navigate} />} />
              <Route path="/upload" element={<Upload onUploadComplete={handleUploadComplete} onCancel={() => navigate('/')} />} />
              <Route path="/invoices" element={<Invoices files={files} allTransactions={allHistoryTransactions} onDelete={handleDeleteInvoice} onNavigateToUpload={() => navigate('/upload')} />} />
-             <Route path="/manual" element={<ManualEntry categories={categories} tags={tags} onUpdateCategories={handleUpdateCategories} onAddTransaction={async (t) => {
+             <Route path="/manual" element={<ManualEntry categories={categories} tags={tags} accounts={accounts} creditCards={creditCards} onUpdateCategories={handleUpdateCategories} onAddTransaction={async (t) => {
                setIsProcessing(true);
                try {
                  await dataService.saveTransactions([t], user.id);

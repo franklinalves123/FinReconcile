@@ -2,24 +2,27 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Tag as TagIcon, Layers, CreditCard, Calendar, DollarSign, Plus, Check, X } from 'lucide-react';
 import { Button } from './ui/Button.tsx';
-import { Category, Transaction, MatchStatus, CardIssuer, Tag } from '../types.ts';
+import { Category, Transaction, MatchStatus, CardIssuer, Tag, Account, CreditCard as CreditCardType } from '../types.ts';
 import { parseBRLAmount } from '../services/dataService.ts';
 
 interface ManualEntryProps {
   categories: Category[];
   tags: Tag[];
+  accounts: Account[];
+  creditCards: CreditCardType[];
   onAddTransaction: (transaction: Transaction) => Promise<void>;
   onUpdateCategories: (categories: Category[]) => Promise<void>;
   onCancel: () => void;
 }
 
-const ISSUERS: CardIssuer[] = ['Inter', 'Santander', 'Bradesco', 'BRB', 'Porto Bank', 'Itaú', 'Outros'];
 
 const today = () => new Date().toISOString().split('T')[0];
 
 export const ManualEntry: React.FC<ManualEntryProps> = ({
   categories,
   tags,
+  accounts,
+  creditCards,
   onAddTransaction,
   onUpdateCategories,
   onCancel,
@@ -30,7 +33,8 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState(categories[0]?.name || '');
   const [subcategory, setSubcategory] = useState('');
-  const [issuer, setIssuer] = useState<CardIssuer>('Inter');
+  // "acc:{uuid}" para conta bancária | "card:{uuid}" para cartão de crédito
+  const [selectedSource, setSelectedSource] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>(['Despesas Pessoais']);
   const [isSaving, setIsSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
@@ -58,7 +62,7 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
     setAmount('');
     setCategory(categories[0]?.name || '');
     setSubcategory(categories[0]?.subcategories[0] || '');
-    setIssuer('Inter');
+    setSelectedSource('');
     setSelectedTags(['Despesas Pessoais']);
   };
 
@@ -136,6 +140,18 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
     const parsedAmount = parseBRLAmount(amount);
     if (parsedAmount <= 0) return;
 
+    // Derivar accountId e cardIssuer do selectedSource
+    let derivedAccountId: string | undefined;
+    let derivedCardIssuer: CardIssuer | undefined;
+    if (selectedSource.startsWith('acc:')) {
+      const acc = accounts.find(a => a.id === selectedSource.slice(4));
+      derivedAccountId  = acc?.id;
+      derivedCardIssuer = acc?.name as CardIssuer;
+    } else if (selectedSource.startsWith('card:')) {
+      const card = creditCards.find(c => c.id === selectedSource.slice(5));
+      derivedCardIssuer = card?.name as CardIssuer;
+    }
+
     const newTransaction: Transaction = {
       id: `manual-${Date.now()}`,
       date: purchaseDate,
@@ -144,7 +160,8 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
       amount: parsedAmount,
       category: category || (type === 'income' ? 'Receita' : 'Outros'),
       subcategory,
-      cardIssuer: issuer,
+      cardIssuer: derivedCardIssuer,
+      accountId: derivedAccountId,
       status: MatchStatus.MATCHED,
       invoiceId: 'manual-entry',
       tags: selectedTags,
@@ -235,14 +252,45 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
             </div>
             <div>
               <label className="block text-xs font-semibold text-neutral-600 mb-1.5 flex items-center gap-1.5">
-                <CreditCard size={13} /> Banco / Cartão
+                <CreditCard size={13} />
+                {type === 'income' ? 'Conta de Destino' : 'Conta / Cartão'}
               </label>
               <select
                 className="w-full border border-neutral-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none bg-white transition-shadow"
-                value={issuer}
-                onChange={e => setIssuer(e.target.value as CardIssuer)}
+                value={selectedSource}
+                onChange={e => setSelectedSource(e.target.value)}
               >
-                {ISSUERS.map(i => <option key={i} value={i}>{i}</option>)}
+                <option value="">— Selecione —</option>
+
+                {type === 'income' ? (
+                  /* Receita: apenas contas bancárias */
+                  accounts.length > 0
+                    ? accounts.map(a => (
+                        <option key={a.id} value={`acc:${a.id}`}>{a.name}</option>
+                      ))
+                    : <option disabled value="">Nenhuma conta cadastrada</option>
+                ) : (
+                  /* Despesa: contas + cartões agrupados */
+                  <>
+                    {accounts.length > 0 && (
+                      <optgroup label="Contas Bancárias">
+                        {accounts.map(a => (
+                          <option key={a.id} value={`acc:${a.id}`}>{a.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {creditCards.length > 0 && (
+                      <optgroup label="Cartões de Crédito">
+                        {creditCards.map(c => (
+                          <option key={c.id} value={`card:${c.id}`}>{c.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {accounts.length === 0 && creditCards.length === 0 && (
+                      <option disabled value="">Nenhuma conta ou cartão cadastrado</option>
+                    )}
+                  </>
+                )}
               </select>
             </div>
           </div>
