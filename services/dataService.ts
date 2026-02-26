@@ -131,6 +131,31 @@ export const dataService = {
     }
   },
 
+  async updateTransaction(transaction: Transaction, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('transactions')
+      .update({
+        purchase_date:  transaction.purchaseDate,
+        description:    transaction.description,
+        amount:         parseBRLAmount(transaction.amount),
+        category:       transaction.category,
+        subcategory:    transaction.subcategory,
+        tags:           transaction.tags || [],
+        status:         transaction.status,
+        card_issuer:    transaction.cardIssuer,
+        notes:          transaction.notes,
+        type:           transaction.type || 'expense',
+        account_id:     transaction.accountId  || null,
+        installment_id: transaction.installmentId || null,
+      })
+      .eq('id', transaction.id)
+      .eq('user_id', userId);
+    if (error) {
+      console.error('Erro ao atualizar transação:', error.message);
+      throw error;
+    }
+  },
+
   async deleteTransaction(transactionId: string, userId: string) {
     const { error } = await supabase
       .from('transactions')

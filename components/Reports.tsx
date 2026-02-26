@@ -356,7 +356,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                           filteredData.slice(0, 100).map((t) => (
                               <tr key={t.id} className="hover:bg-neutral-50/50 transition-colors">
                                   <td className="px-6 py-3 text-xs text-neutral-500 font-medium">
-                                      {new Date(t.purchaseDate).toLocaleDateString('pt-BR')}
+                                      {t.purchaseDate ? t.purchaseDate.split('-').reverse().join('/') : '—'}
                                   </td>
                                   <td className="px-6 py-3 text-sm font-bold text-neutral-800 truncate max-w-[200px]">
                                       {t.description}

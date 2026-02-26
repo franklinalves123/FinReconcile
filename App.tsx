@@ -176,6 +176,17 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleUpdateTransaction = async (transaction: Transaction) => {
+    if (!user) return;
+    try {
+      await dataService.updateTransaction(transaction, user.id);
+      setAllHistoryTransactions(prev => prev.map(t => t.id === transaction.id ? transaction : t));
+      setToast({ message: 'Lançamento atualizado com sucesso.', type: 'success' });
+    } catch (e: any) {
+      setToast({ message: 'Erro ao atualizar: ' + (e.message || 'verifique sua conexão.'), type: 'error' });
+    }
+  };
+
   const handleDeleteTransaction = async (transactionId: string) => {
     if (!user) return;
     try {
@@ -286,7 +297,7 @@ const AppContent: React.FC = () => {
                  setIsProcessing(false);
                }
              }} onCancel={() => navigate('/')} />} />
-             <Route path="/transactions" element={<Transactions transactions={allHistoryTransactions} onDeleteTransaction={handleDeleteTransaction} onNavigateToUpload={() => navigate('/upload')} />} />
+             <Route path="/transactions" element={<Transactions transactions={allHistoryTransactions} onDeleteTransaction={handleDeleteTransaction} onUpdateTransaction={handleUpdateTransaction} onNavigateToUpload={() => navigate('/upload')} />} />
              <Route path="/review" element={<Review 
                 transactions={transactions} 
                 categories={categories} 
