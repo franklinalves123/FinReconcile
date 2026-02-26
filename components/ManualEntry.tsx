@@ -24,6 +24,7 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
   onUpdateCategories,
   onCancel,
 }) => {
+  const [type, setType] = useState<'expense' | 'income'>('expense');
   const [purchaseDate, setPurchaseDate] = useState(today());
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -57,6 +58,7 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
   useEffect(() => { if (isAddingSub) subInputRef.current?.focus(); }, [isAddingSub]);
 
   const resetForm = () => {
+    setType('expense');
     setPurchaseDate(today());
     setDescription('');
     setAmount('');
@@ -146,12 +148,13 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
       purchaseDate,
       description: description.trim(),
       amount: parsedAmount,
-      category: category || 'Outros',
+      category: category || (type === 'income' ? 'Receita' : 'Outros'),
       subcategory,
       cardIssuer: issuer,
       status: MatchStatus.MATCHED,
       invoiceId: 'manual-entry',
       tags: selectedTags,
+      type,
     };
 
     setIsSaving(true);
@@ -232,6 +235,37 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
       </div>
 
       <div className="space-y-5">
+
+        {/* Toggle Tipo — Despesa / Receita */}
+        <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+          <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">Tipo de Lançamento</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setType('expense')}
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 text-sm font-bold transition-all ${
+                type === 'expense'
+                  ? 'bg-red-50 border-red-400 text-red-600'
+                  : 'bg-white border-neutral-200 text-neutral-400 hover:border-neutral-300'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${type === 'expense' ? 'bg-red-500' : 'bg-neutral-300'}`} />
+              Despesa
+            </button>
+            <button
+              type="button"
+              onClick={() => setType('income')}
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 text-sm font-bold transition-all ${
+                type === 'income'
+                  ? 'bg-green-50 border-green-400 text-green-600'
+                  : 'bg-white border-neutral-200 text-neutral-400 hover:border-neutral-300'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${type === 'income' ? 'bg-green-500' : 'bg-neutral-300'}`} />
+              Receita
+            </button>
+          </div>
+        </div>
 
         {/* Card 1 — Quando e onde */}
         <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-6">
@@ -318,7 +352,9 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
 
             {/* Categoria + botão + */}
             <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Categoria</label>
+              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
+                Categoria {type === 'income' && <span className="text-neutral-400 font-normal">(opcional)</span>}
+              </label>
               {isAddingCat ? (
                 <InlineInput
                   inputRef={catInputRef}

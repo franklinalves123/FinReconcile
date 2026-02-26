@@ -38,24 +38,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ files, allTransactions, on
   const stats = useMemo(() => {
     const currentCycleLabel = cycleData[cycleData.length - 1]?.name || '';
     const filtered = allTransactions.filter(t => getCycleInfo(t, invoiceDateMap).label === currentCycleLabel);
-    
-    const totalSpend = filtered.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+
+    const totalIncome  = filtered.filter(t => t.type === 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    const totalExpense = filtered.filter(t => t.type !== 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    const balance = totalIncome - totalExpense;
+
     const catMap: Record<string, number> = {};
-    filtered.forEach(t => {
+    filtered.filter(t => t.type !== 'income').forEach(t => {
         catMap[t.category] = (catMap[t.category] || 0) + (Number(t.amount) || 0);
     });
-    
+
     const categoryBreakdown = Object.keys(catMap).map(key => ({
         name: key,
         value: catMap[key]
     })).sort((a,b) => b.value - a.value);
 
     return {
-        totalSpend,
+        totalIncome,
+        totalExpense,
+        balance,
         currentCycleLabel,
         categoryBreakdown
     };
-  }, [allTransactions, cycleData]);
+  }, [allTransactions, cycleData, invoiceDateMap]);
 
   const trend = useMemo(() => {
     if (cycleData.length < 2) return null;
@@ -85,10 +90,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ files, allTransactions, on
          </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100 flex flex-col ring-1 ring-blue-50">
-          <span className="text-neutral-500 text-[10px] font-bold uppercase mb-2 flex items-center gap-2"><TrendingUp size={14} /> Ciclo Atual ({stats.currentCycleLabel})</span>
-          <span className="text-3xl font-black text-neutral-900">{stats.totalSpend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+      {/* Cards financeiros — Receitas / Despesas / Saldo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-green-100 ring-1 ring-green-50 flex flex-col">
+          <span className="text-green-600 text-[10px] font-bold uppercase mb-2 flex items-center gap-2">
+            <ArrowUpRight size={14} /> Receitas ({stats.currentCycleLabel || '—'})
+          </span>
+          <span className="text-3xl font-black text-green-700">
+            {stats.totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </span>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-red-100 ring-1 ring-red-50 flex flex-col">
+          <span className="text-red-500 text-[10px] font-bold uppercase mb-2 flex items-center gap-2">
+            <ArrowDownRight size={14} /> Despesas ({stats.currentCycleLabel || '—'})
+          </span>
+          <span className="text-3xl font-black text-red-600">
+            {stats.totalExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </span>
           {trend && (
             <div className={`flex items-center gap-1 mt-2 text-[10px] font-bold uppercase ${trend.isUp ? 'text-red-500' : 'text-secondary'}`}>
               {trend.isUp ? <ArrowUpRight size={14}/> : <ArrowDownRight size={14}/>}
@@ -96,7 +115,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ files, allTransactions, on
             </div>
           )}
         </div>
-        
+
+        <div className={`bg-white p-6 rounded-xl shadow-sm flex flex-col border ${stats.balance >= 0 ? 'border-green-100 ring-1 ring-green-50' : 'border-red-100 ring-1 ring-red-50'}`}>
+          <span className="text-neutral-500 text-[10px] font-bold uppercase mb-2 flex items-center gap-2">
+            <TrendingUp size={14} /> Saldo Mensal
+          </span>
+          <span className={`text-3xl font-black ${stats.balance >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+            {stats.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </span>
+          <span className="text-[10px] text-neutral-400 mt-2">Receitas − Despesas</span>
+        </div>
+      </div>
+
+      {/* Cards de navegação */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-100 flex flex-col">
           <span className="text-neutral-500 text-[10px] font-bold uppercase mb-2 flex items-center gap-2"><CheckCircle size={14} /> Faturas Ativas</span>
           <span className="text-3xl font-black text-neutral-900">{files.length}</span>
@@ -116,10 +148,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ files, allTransactions, on
         </div>
 
         <div className="bg-white p-2 rounded-xl shadow-sm border border-neutral-100">
-           <button onClick={() => onNavigate('/upload')} className="bg-primary text-white w-full h-full rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100">
-              <span className="text-xl font-bold">+</span>
-              <span className="font-bold text-[10px] uppercase">Nova Importação</span>
-           </button>
+          <button onClick={() => onNavigate('/upload')} className="bg-primary text-white w-full h-full rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100">
+            <span className="text-xl font-bold">+</span>
+            <span className="font-bold text-[10px] uppercase">Nova Importação</span>
+          </button>
         </div>
       </div>
 
