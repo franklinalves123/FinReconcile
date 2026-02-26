@@ -17,7 +17,7 @@ import { Tasks } from './components/Tasks.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
 import { categorizeTransactions, extractInvoiceData } from './services/ai/index.ts';
-import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard, Task } from './types.ts';
+import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard as CreditCardType, Task } from './types.ts';
 import { INITIAL_CATEGORIES, DEFAULT_TAGS } from './constants/initialData.ts';
 import { Toast, ToastMessage } from './components/ui/Toast.tsx';
 
@@ -33,7 +33,7 @@ const AppContent: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [tags, setTags] = useState<Tag[]>(DEFAULT_TAGS);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCardType[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentFileEntry, setCurrentFileEntry] = useState<InvoiceFile | null>(null);
