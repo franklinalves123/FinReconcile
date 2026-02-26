@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard, List, Wallet as WalletIcon } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard, List, Wallet as WalletIcon, CheckSquare } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { Upload } from './components/Upload.tsx';
@@ -13,10 +13,11 @@ import { Reports } from './components/Reports.tsx';
 import { Invoices } from './components/Invoices.tsx';
 import { Transactions } from './components/Transactions.tsx';
 import { Wallet } from './components/Wallet.tsx';
+import { Tasks } from './components/Tasks.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
 import { categorizeTransactions, extractInvoiceData } from './services/ai/index.ts';
-import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard } from './types.ts';
+import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard, Task } from './types.ts';
 import { INITIAL_CATEGORIES, DEFAULT_TAGS } from './constants/initialData.ts';
 import { Toast, ToastMessage } from './components/ui/Toast.tsx';
 
@@ -33,6 +34,7 @@ const AppContent: React.FC = () => {
   const [tags, setTags] = useState<Tag[]>(DEFAULT_TAGS);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentFileEntry, setCurrentFileEntry] = useState<InvoiceFile | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -236,6 +238,7 @@ const AppContent: React.FC = () => {
         </div>
         <nav className="flex-1 px-4 space-y-1">
           <SidebarItem to="/" icon={<LayoutDashboard size={20}/>} label="Dashboard" active={location.pathname === '/'} />
+          <SidebarItem to="/tasks" icon={<CheckSquare size={20}/>} label="Tarefas" active={location.pathname === '/tasks'} />
           <SidebarItem to="/upload" icon={<UploadIcon size={20}/>} label="Importar" active={location.pathname === '/upload'} />
           <SidebarItem to="/invoices" icon={<FileText size={20}/>} label="Faturas" active={location.pathname === '/invoices'} />
           <SidebarItem to="/manual" icon={<PlusSquare size={20}/>} label="Manual" active={location.pathname === '/manual'} />
@@ -315,6 +318,7 @@ const AppContent: React.FC = () => {
                  setIsProcessing(false);
                }
              }} onCreateSystemMatch={(id) => setTransactions(p => p.map(t => t.id === id ? {...t, status: MatchStatus.MATCHED} : t))} />} />
+             <Route path="/tasks" element={<Tasks userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
              <Route path="/wallet" element={<Wallet userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
              <Route path="/reports" element={<Reports allTransactions={allHistoryTransactions} categories={categories} tags={tags} files={files} />} />
              <Route path="/settings" element={<Settings currentUserEmail={user.email} categories={categories} tags={tags} onUpdateCategories={handleUpdateCategories} onUpdateTags={handleUpdateTags} />} />
