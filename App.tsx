@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard, List } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard, List, Wallet as WalletIcon } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { Upload } from './components/Upload.tsx';
@@ -12,6 +12,7 @@ import { ManualEntry } from './components/ManualEntry.tsx';
 import { Reports } from './components/Reports.tsx';
 import { Invoices } from './components/Invoices.tsx';
 import { Transactions } from './components/Transactions.tsx';
+import { Wallet } from './components/Wallet.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
 import { categorizeTransactions, extractInvoiceData } from './services/ai/index.ts';
@@ -233,6 +234,7 @@ const AppContent: React.FC = () => {
           <SidebarItem to="/invoices" icon={<FileText size={20}/>} label="Faturas" active={location.pathname === '/invoices'} />
           <SidebarItem to="/manual" icon={<PlusSquare size={20}/>} label="Manual" active={location.pathname === '/manual'} />
           <SidebarItem to="/transactions" icon={<List size={20}/>} label="Transações" active={location.pathname === '/transactions'} />
+          <SidebarItem to="/wallet" icon={<WalletIcon size={20}/>} label="Carteira" active={location.pathname === '/wallet'} />
           <SidebarItem to="/reports" icon={<PieChart size={20}/>} label="Relatórios" active={location.pathname === '/reports'} />
         </nav>
         <div className="p-4 border-t">
@@ -307,6 +309,7 @@ const AppContent: React.FC = () => {
                  setIsProcessing(false);
                }
              }} onCreateSystemMatch={(id) => setTransactions(p => p.map(t => t.id === id ? {...t, status: MatchStatus.MATCHED} : t))} />} />
+             <Route path="/wallet" element={<Wallet userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
              <Route path="/reports" element={<Reports allTransactions={allHistoryTransactions} categories={categories} tags={tags} files={files} />} />
              <Route path="/settings" element={<Settings currentUserEmail={user.email} categories={categories} tags={tags} onUpdateCategories={handleUpdateCategories} onUpdateTags={handleUpdateTags} />} />
            </Routes>
