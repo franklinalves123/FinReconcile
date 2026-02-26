@@ -31,7 +31,7 @@ export const dataService = {
   async getTransactions(userId: string) {
     const { data, error } = await supabase
       .from('transactions')
-      .select('id, invoice_id, purchase_date, description, amount, category, subcategory, tags, status, card_issuer, notes')
+      .select('id, invoice_id, purchase_date, description, amount, category, subcategory, tags, status, card_issuer, notes, type, account_id, installment_id')
       .eq('user_id', userId)
       .order('purchase_date', { ascending: false });
     
@@ -52,7 +52,10 @@ export const dataService = {
       invoiceId: t.invoice_id || 'manual-entry',
       status: t.status,
       cardIssuer: t.card_issuer || 'Outros',
-      notes: t.notes || ''
+      notes: t.notes || '',
+      type: (t.type as 'expense' | 'income') || 'expense',
+      accountId: t.account_id || undefined,
+      installmentId: t.installment_id || undefined,
     })) || [];
   },
 
@@ -72,7 +75,10 @@ export const dataService = {
       tags: t.tags || [],
       status: t.status,
       card_issuer: t.cardIssuer,
-      notes: t.notes
+      notes: t.notes,
+      type: t.type || 'expense',
+      account_id: t.accountId || null,
+      installment_id: t.installmentId || null,
     }));
 
     const { error } = await supabase

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, Tag as TagIcon, Layers, CreditCard, Calendar, DollarSign, Plus, Check, X } from 'lucide-react';
 import { Button } from './ui/Button.tsx';
 import { Category, Transaction, MatchStatus, CardIssuer, Tag } from '../types.ts';
@@ -39,23 +39,17 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
   const [isAddingCat, setIsAddingCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [isSavingCat, setIsSavingCat] = useState(false);
-  const catInputRef = useRef<HTMLInputElement>(null);
 
   // Inline add — subcategoria
   const [isAddingSub, setIsAddingSub] = useState(false);
   const [newSubName, setNewSubName] = useState('');
   const [isSavingSub, setIsSavingSub] = useState(false);
-  const subInputRef = useRef<HTMLInputElement>(null);
 
   // Sincroniza subcategoria quando categoria muda
   useEffect(() => {
     const cat = categories.find(c => c.name === category);
     setSubcategory(cat?.subcategories[0] || '');
   }, [category, categories]);
-
-  // Foca o input ao abrir
-  useEffect(() => { if (isAddingCat) catInputRef.current?.focus(); }, [isAddingCat]);
-  useEffect(() => { if (isAddingSub) subInputRef.current?.focus(); }, [isAddingSub]);
 
   const resetForm = () => {
     setType('expense');
@@ -172,51 +166,6 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
   const selectedCat = categories.find(c => c.name === category);
   const hasSubcategories = (selectedCat?.subcategories.length ?? 0) > 0;
   const canSave = description.trim().length > 0 && amount.trim().length > 0 && parseBRLAmount(amount) > 0;
-
-  // ── UI helper: campo inline de adição ──
-  const InlineInput = ({
-    inputRef, value, onChange, onConfirm, onCancel: cancelFn, placeholder, isSaving: saving,
-  }: {
-    inputRef: React.RefObject<HTMLInputElement | null>;
-    value: string;
-    onChange: (v: string) => void;
-    onConfirm: () => void;
-    onCancel: () => void;
-    placeholder: string;
-    isSaving: boolean;
-  }) => (
-    <div className="flex gap-1.5 flex-1">
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') onConfirm();
-          if (e.key === 'Escape') cancelFn();
-        }}
-        placeholder={placeholder}
-        disabled={saving}
-        className="flex-1 border border-primary rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none disabled:opacity-50"
-      />
-      <button
-        onClick={onConfirm}
-        disabled={saving || !value.trim()}
-        title="Confirmar"
-        className="p-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40"
-      >
-        <Check size={14} />
-      </button>
-      <button
-        onClick={cancelFn}
-        disabled={saving}
-        title="Cancelar"
-        className="p-2 border border-neutral-200 text-neutral-400 hover:text-red-500 rounded-lg transition-colors"
-      >
-        <X size={14} />
-      </button>
-    </div>
-  );
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
@@ -356,15 +305,23 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
                 Categoria {type === 'income' && <span className="text-neutral-400 font-normal">(opcional)</span>}
               </label>
               {isAddingCat ? (
-                <InlineInput
-                  inputRef={catInputRef}
-                  value={newCatName}
-                  onChange={setNewCatName}
-                  onConfirm={handleAddCategory}
-                  onCancel={() => { setIsAddingCat(false); setNewCatName(''); }}
-                  placeholder="Nome da nova categoria…"
-                  isSaving={isSavingCat}
-                />
+                <div className="flex gap-1.5">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newCatName}
+                    onChange={e => setNewCatName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleAddCategory();
+                      if (e.key === 'Escape') { setIsAddingCat(false); setNewCatName(''); }
+                    }}
+                    placeholder="Nome da nova categoria…"
+                    disabled={isSavingCat}
+                    className="flex-1 border border-primary rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none disabled:opacity-50"
+                  />
+                  <button onClick={handleAddCategory} disabled={isSavingCat || !newCatName.trim()} title="Confirmar" className="p-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40"><Check size={14} /></button>
+                  <button onClick={() => { setIsAddingCat(false); setNewCatName(''); }} disabled={isSavingCat} title="Cancelar" className="p-2 border border-neutral-200 text-neutral-400 hover:text-red-500 rounded-lg transition-colors"><X size={14} /></button>
+                </div>
               ) : (
                 <div className="flex gap-1.5">
                   <select
@@ -390,15 +347,23 @@ export const ManualEntry: React.FC<ManualEntryProps> = ({
             <div>
               <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Subcategoria</label>
               {isAddingSub ? (
-                <InlineInput
-                  inputRef={subInputRef}
-                  value={newSubName}
-                  onChange={setNewSubName}
-                  onConfirm={handleAddSubcategory}
-                  onCancel={() => { setIsAddingSub(false); setNewSubName(''); }}
-                  placeholder="Nome da nova subcategoria…"
-                  isSaving={isSavingSub}
-                />
+                <div className="flex gap-1.5">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newSubName}
+                    onChange={e => setNewSubName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleAddSubcategory();
+                      if (e.key === 'Escape') { setIsAddingSub(false); setNewSubName(''); }
+                    }}
+                    placeholder="Nome da nova subcategoria…"
+                    disabled={isSavingSub}
+                    className="flex-1 border border-primary rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none disabled:opacity-50"
+                  />
+                  <button onClick={handleAddSubcategory} disabled={isSavingSub || !newSubName.trim()} title="Confirmar" className="p-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40"><Check size={14} /></button>
+                  <button onClick={() => { setIsAddingSub(false); setNewSubName(''); }} disabled={isSavingSub} title="Cancelar" className="p-2 border border-neutral-200 text-neutral-400 hover:text-red-500 rounded-lg transition-colors"><X size={14} /></button>
+                </div>
               ) : (
                 <div className="flex gap-1.5">
                   <select
