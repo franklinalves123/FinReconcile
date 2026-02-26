@@ -25,6 +25,10 @@ export interface Transaction {
   confidence?: number;
   matchedTransactionId?: string;
   notes?: string;
+  // Life OS extensions
+  type?: 'expense' | 'income';
+  accountId?: string;
+  installmentId?: string;
 }
 
 export interface SystemTransaction {
@@ -66,6 +70,76 @@ export interface AppUser {
 }
 
 export const MASTER_EMAIL = 'franklin.alves.carvalho@gmail.com';
+
+// ============================================================
+// Life OS — Novas entidades
+// ============================================================
+
+export interface Account {
+  id: string;
+  userId: string;
+  createdAt: string;
+  name: string;
+  type: 'checking' | 'savings' | 'investment' | 'wallet';
+  balance: number;
+}
+
+export interface CreditCard {
+  id: string;
+  userId: string;
+  createdAt: string;
+  name: string;
+  limitAmount: number;
+  closingDay: number;
+  dueDay: number;
+}
+
+export interface Project {
+  id: string;
+  userId: string;
+  createdAt: string;
+  name: string;
+  status: 'active' | 'paused' | 'completed' | 'archived';
+  progress: number;
+}
+
+export interface Task {
+  id: string;
+  userId: string;
+  createdAt: string;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in_progress' | 'done' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  dueDate?: string;
+  projectId?: string;
+}
+
+export interface Habit {
+  id: string;
+  userId: string;
+  createdAt: string;
+  name: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+}
+
+export interface HabitLog {
+  id: string;
+  userId: string;
+  createdAt: string;
+  habitId: string;
+  date: string;
+  completed: boolean;
+}
+
+export interface Note {
+  id: string;
+  userId: string;
+  createdAt: string;
+  title?: string;
+  content?: string;
+  typeNote: 'diary' | 'brain_dump' | 'notebook';
+}
 
 export type SortDirection = 'asc' | 'desc';
 
