@@ -201,22 +201,22 @@ export const Review: React.FC<ReviewProps> = ({
       <div className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden flex flex-col">
         <div className="bg-neutral-50 border-b border-neutral-200 px-6 py-3 grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider select-none">
             <div className="col-span-1 cursor-pointer" onClick={() => handleSort('purchaseDate')}>Data</div>
-            <div className="col-span-2">Descrição</div>
+            <div className="col-span-3">Descrição</div>
             <div className="col-span-1">Banco</div>
             <div className="col-span-1 text-right cursor-pointer" onClick={() => handleSort('amount')}>Valor</div>
             <div className="col-span-2">Categoria</div>
             <div className="col-span-2">Subcategoria</div>
-            <div className="col-span-2 text-center">Tags</div>
+            <div className="col-span-1 text-center">Tags</div>
             <div className="col-span-1 text-center">Ações</div>
         </div>
         
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 min-h-0">
             {sortedTransactions.map((t) => {
                 const currentCategory = categories.find(c => c.name === t.category);
                 return (
                     <div key={t.id} className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-neutral-100 hover:bg-blue-50/30 items-center transition-colors">
                         <div className="col-span-1 text-xs text-neutral-900 font-bold">{formatDateBr(t.purchaseDate)}</div>
-                        <div className="col-span-2 text-sm text-neutral-700 truncate">{t.description}</div>
+                        <div className="col-span-3 text-sm text-neutral-700 leading-snug" title={t.description}>{t.description}</div>
                         <div className="col-span-1">
                             <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 truncate max-w-full">
                                {t.cardIssuer}
@@ -269,7 +269,7 @@ export const Review: React.FC<ReviewProps> = ({
                               <Plus size={12}/>
                             </button>
                         </div>
-                        <div className="col-span-2 flex items-center justify-center gap-1.5">
+                        <div className="col-span-1 flex flex-col items-center gap-1">
                             {(['Pessoais', 'Empresa'] as const).map(tag => {
                               const active = t.tags?.includes(tag);
                               return (
@@ -302,6 +302,20 @@ export const Review: React.FC<ReviewProps> = ({
                     </div>
                 );
             })}
+        </div>
+
+        {/* Total Footer */}
+        <div className="border-t-2 border-neutral-200 bg-neutral-50 px-6 py-3 grid grid-cols-12 gap-4 items-center shrink-0">
+          <div className="col-span-1" />
+          <div className="col-span-3 text-sm font-bold text-neutral-600">
+            Total extraído
+            <span className="ml-2 text-xs font-normal text-neutral-400">({transactions.length} transaç{transactions.length !== 1 ? 'ões' : 'ão'})</span>
+          </div>
+          <div className="col-span-1" />
+          <div className={`col-span-1 text-sm font-bold text-right ${hasDivergence ? 'text-amber-600' : 'text-neutral-900'}`}>
+            {extractedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </div>
+          <div className="col-span-6" />
         </div>
       </div>
 

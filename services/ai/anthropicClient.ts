@@ -17,7 +17,7 @@
 import { buildCategorizePrompt, buildExtractInvoicePrompt } from './prompts.ts';
 import type { CategorySuggestion, CategoryPattern, ExtractedTransaction } from './types.ts';
 
-const ANTHROPIC_MODEL_EXTRACT = 'claude-sonnet-4-6'; // Sonnet para extração de PDF (maior capacidade)
+const ANTHROPIC_MODEL_EXTRACT = 'claude-opus-4-6'; // Opus para extração de PDF (maior capacidade e precisão)
 const ANTHROPIC_MODEL_CATEGORIZE = 'claude-haiku-4-5-20251001'; // Haiku para categorização (velocidade/custo)
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
