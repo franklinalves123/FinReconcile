@@ -4,7 +4,7 @@ import { ai, aiConfig } from './client.ts';
 import { buildCategorizePrompt } from './prompts.ts';
 import { categorizeTransactionsWithOpenAI } from './openaiClient.ts';
 import { categorizeTransactionsWithAnthropic } from './anthropicClient.ts';
-import type { CategorySuggestion } from './types.ts';
+import type { CategorySuggestion, CategoryPattern } from './types.ts';
 
 /** Tamanho máximo de cada lote enviado à IA. Faturas com mais itens são divididas. */
 const BATCH_SIZE = 30;
@@ -26,7 +26,8 @@ const BATCH_SIZE = 30;
  */
 export async function categorizeTransactions(
   descriptions: string[],
-  availableCategories: string[]
+  availableCategories: string[],
+  historicalPatterns?: CategoryPattern[]
 ): Promise<CategorySuggestion[]> {
   // Fallback imediato para entradas vazias — sem chamar a API
   if (descriptions.length === 0 || availableCategories.length === 0) {
@@ -45,7 +46,7 @@ export async function categorizeTransactions(
 
   // Processa todos os lotes em paralelo e concatena na ordem original
   const chunkResults = await Promise.all(
-    chunks.map(chunk => categorizeBatch(chunk, availableCategories))
+    chunks.map(chunk => categorizeBatch(chunk, availableCategories, historicalPatterns))
   );
 
   return chunkResults.flat();
@@ -57,25 +58,26 @@ export async function categorizeTransactions(
  */
 async function categorizeBatch(
   descriptions: string[],
-  availableCategories: string[]
+  availableCategories: string[],
+  historicalPatterns?: CategoryPattern[]
 ): Promise<CategorySuggestion[]> {
   // Provider 1: Gemini
   try {
-    return await categorizeWithGemini(descriptions, availableCategories);
+    return await categorizeWithGemini(descriptions, availableCategories, historicalPatterns);
   } catch (error) {
     console.error('[Categorizer API Error] Gemini falhou, tentando OpenAI:', error);
   }
 
   // Provider 2: OpenAI
   try {
-    return await categorizeTransactionsWithOpenAI(descriptions, availableCategories);
+    return await categorizeTransactionsWithOpenAI(descriptions, availableCategories, historicalPatterns);
   } catch (error) {
     console.error('[Categorizer API Error] OpenAI falhou, tentando Anthropic:', error);
   }
 
   // Provider 3: Anthropic
   try {
-    return await categorizeTransactionsWithAnthropic(descriptions, availableCategories);
+    return await categorizeTransactionsWithAnthropic(descriptions, availableCategories, historicalPatterns);
   } catch (error) {
     console.error('[Categorizer API Error] Todos os provedores falharam:', error);
   }
@@ -90,9 +92,10 @@ async function categorizeBatch(
 
 async function categorizeWithGemini(
   descriptions: string[],
-  availableCategories: string[]
+  availableCategories: string[],
+  historicalPatterns?: CategoryPattern[]
 ): Promise<CategorySuggestion[]> {
-  const prompt = buildCategorizePrompt(descriptions, availableCategories);
+  const prompt = buildCategorizePrompt(descriptions, availableCategories, historicalPatterns);
 
   const response = await ai.models.generateContent({
     model: aiConfig.model,

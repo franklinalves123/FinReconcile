@@ -22,3 +22,10 @@ export interface AIModuleConfig {
   useEdgeFunction: boolean;
   model: string;
 }
+
+/** Padrão aprendido de categorização do histórico do usuário. */
+export interface CategoryPattern {
+  description: string;   // descrição original (ou prefixo normalizado)
+  category: string;
+  subcategory?: string;
+}

@@ -11,7 +11,7 @@
  * Configuração: VITE_OPENAI_API_KEY no .env.local
  */
 import { buildCategorizePrompt } from './prompts.ts';
-import type { CategorySuggestion, ExtractedTransaction } from './types.ts';
+import type { CategorySuggestion, CategoryPattern, ExtractedTransaction } from './types.ts';
 
 const OPENAI_MODEL = 'gpt-4o-mini';
 const OPENAI_CHAT_URL = 'https://api.openai.com/v1/chat/completions';
@@ -69,9 +69,10 @@ export async function extractInvoiceDataWithOpenAI(
  */
 export async function categorizeTransactionsWithOpenAI(
   descriptions: string[],
-  availableCategories: string[]
+  availableCategories: string[],
+  historicalPatterns?: CategoryPattern[]
 ): Promise<CategorySuggestion[]> {
-  const prompt = buildCategorizePrompt(descriptions, availableCategories);
+  const prompt = buildCategorizePrompt(descriptions, availableCategories, historicalPatterns);
   const text = await callOpenAIChat(prompt);
   console.log(`[Categorizer] OpenAI raw response (${descriptions.length} items):`, text?.slice(0, 200));
   const result = JSON.parse(text || '{"suggestions":[]}');

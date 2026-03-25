@@ -3,6 +3,7 @@
  * Prompts centralizados e versionados para o módulo de IA.
  * Nenhum arquivo de services/ai/ deve conter strings de prompt inline.
  */
+import type { CategoryPattern } from './types.ts';
 
 /**
  * Prompt para extração de transações a partir de PDF de fatura.
@@ -49,14 +50,24 @@ Retorne APENAS o JSON no formato exato solicitado, sem texto introdutório ou ex
  */
 export function buildCategorizePrompt(
   descriptions: string[],
-  availableCategories: string[]
+  availableCategories: string[],
+  historicalPatterns?: CategoryPattern[]
 ): string {
   const categoriesList = availableCategories.join(', ');
   const transactionsList = descriptions
     .map((d, i) => `${i + 1}. "${d}"`)
     .join('\n');
 
-  return `Você é um categorizador especialista de gastos pessoais brasileiros. Classifique as transações de cartão de crédito abaixo com precisão e consistência.
+  const historicalSection = historicalPatterns && historicalPatterns.length > 0
+    ? `\nHISTÓRICO DE CATEGORIZAÇÕES DO USUÁRIO (referência prioritária — se uma transação nova for similar a uma do histórico, use a mesma categoria):\n${
+        historicalPatterns.map(p => {
+          const sub = p.subcategory ? ` / ${p.subcategory}` : '';
+          return `- "${p.description}" → ${p.category}${sub}`;
+        }).join('\n')
+      }\n`
+    : '';
+
+  return `Você é um categorizador especialista de gastos pessoais brasileiros. Classifique as transações de cartão de crédito abaixo com precisão e consistência.${historicalSection}
 
 CATEGORIAS DISPONÍVEIS — use EXATAMENTE estes nomes, sem variações ortográficas:
 ${categoriesList}

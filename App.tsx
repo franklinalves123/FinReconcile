@@ -18,7 +18,7 @@ import { Habits } from './components/Habits.tsx';
 import { Projects } from './components/Projects.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
-import { categorizeTransactions, extractInvoiceData, type CategorySuggestion } from './services/ai/index.ts';
+import { categorizeTransactions, extractInvoiceData, type CategorySuggestion, type CategoryPattern } from './services/ai/index.ts';
 import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard as CreditCardType, Task } from './types.ts';
 import { INITIAL_CATEGORIES, DEFAULT_TAGS } from './constants/initialData.ts';
 import { Toast, ToastMessage } from './components/ui/Toast.tsx';
@@ -79,6 +79,30 @@ const AppContent: React.FC = () => {
     }
   };
 
+  /**
+   * Extrai padrões de categorização do histórico do usuário.
+   * Desconsidera "Outros" (fallback) e limita a 50 entradas para não inflar o prompt.
+   */
+  const buildCategoryPatterns = (transactions: Transaction[]): CategoryPattern[] => {
+    const seen = new Map<string, CategoryPattern>();
+    transactions
+      .filter(t => t.category && t.category !== 'Outros')
+      .forEach(t => {
+        // Usa os primeiros 30 chars normalizados como chave para agrupar
+        // transações do mesmo estabelecimento (ex: "FACEBK SSKK..." e "FACEBK SZRM..." → "facebk")
+        const key = t.description.slice(0, 30).toLowerCase().trim();
+        // Sobrescreve com a mais recente (array já está ordenado por data desc do Supabase)
+        if (!seen.has(key)) {
+          seen.set(key, {
+            description: t.description.slice(0, 40),
+            category: t.category,
+            subcategory: t.subcategory || undefined,
+          });
+        }
+      });
+    return Array.from(seen.values()).slice(0, 50);
+  };
+
   const handleUpdateCategories = async (newCategories: Category[]) => {
     if (!user) return;
     try {
@@ -132,7 +156,8 @@ const AppContent: React.FC = () => {
       const extractedData = await extractInvoiceData(base64, issuer);
       const aiSuggestions = await categorizeTransactions(
         extractedData.map(d => d.description),
-        categories.map(c => c.name)
+        categories.map(c => c.name),
+        buildCategoryPatterns(allHistoryTransactions)
       );
 
       // Detecta se o hard fallback disparou (todos os providers de IA falharam)
@@ -255,7 +280,8 @@ const AppContent: React.FC = () => {
     try {
       const aiSuggestions = await categorizeTransactions(
         transactions.map(t => t.description),
-        categories.map(c => c.name)
+        categories.map(c => c.name),
+        buildCategoryPatterns(allHistoryTransactions)
       );
       const allFallback = aiSuggestions.length > 0 &&
         aiSuggestions.every(s => s.suggestedCategory === 'Outros' && s.confidence === 0);

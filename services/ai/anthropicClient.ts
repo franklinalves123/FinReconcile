@@ -15,7 +15,7 @@
  *   e reutilize o padrão VITE_USE_EDGE_FUNCTION já existente.
  */
 import { buildCategorizePrompt, buildExtractInvoicePrompt } from './prompts.ts';
-import type { CategorySuggestion, ExtractedTransaction } from './types.ts';
+import type { CategorySuggestion, CategoryPattern, ExtractedTransaction } from './types.ts';
 
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -109,9 +109,10 @@ Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markd
  */
 export async function categorizeTransactionsWithAnthropic(
   descriptions: string[],
-  availableCategories: string[]
+  availableCategories: string[],
+  historicalPatterns?: CategoryPattern[]
 ): Promise<CategorySuggestion[]> {
-  const basePrompt = buildCategorizePrompt(descriptions, availableCategories);
+  const basePrompt = buildCategorizePrompt(descriptions, availableCategories, historicalPatterns);
   const prompt = `${basePrompt}
 
 Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markdown:

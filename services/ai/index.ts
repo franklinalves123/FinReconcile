@@ -7,4 +7,4 @@
  */
 export { extractInvoiceData } from './pdfExtractor.ts';
 export { categorizeTransactions } from './categorizer.ts';
-export type { ExtractedTransaction, CategorySuggestion } from './types.ts';
+export type { ExtractedTransaction, CategorySuggestion, CategoryPattern } from './types.ts';
