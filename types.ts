@@ -99,8 +99,10 @@ export interface Project {
   userId: string;
   createdAt: string;
   name: string;
-  status: 'active' | 'paused' | 'completed' | 'archived';
+  status: string;
   progress: number;
+  description?: string;
+  dueDate?: string;
 }
 
 export interface Task {

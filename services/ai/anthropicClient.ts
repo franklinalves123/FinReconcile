@@ -98,7 +98,7 @@ Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markd
     },
   ];
 
-  const text = await callAnthropic(messages, 4096);
+  const text = await callAnthropic(messages, 8192);
   const result = JSON.parse(text || '{"transactions":[]}');
   return result.transactions || [];
 }
@@ -118,17 +118,16 @@ Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markd
 {"suggestions": [{"description": "...", "suggestedCategory": "...", "confidence": 0.0}]}`;
 
   const messages = [{ role: 'user', content: prompt }];
-  const text = await callAnthropic(messages);
+  const text = await callAnthropic(messages, 4096);
+  console.log(`[Categorizer] Anthropic raw response (${descriptions.length} items):`, text?.slice(0, 200));
   const result = JSON.parse(text || '{"suggestions":[]}');
   const suggestions: CategorySuggestion[] = result.suggestions || [];
 
-  if (suggestions.length !== descriptions.length) {
-    return descriptions.map((desc, i) => suggestions[i] ?? {
-      description: desc,
-      suggestedCategory: 'Outros',
-      confidence: 0,
-    });
-  }
-
-  return suggestions;
+  // Mapeia por índice com description original — não depende de string match.
+  return descriptions.map((desc, i) => ({
+    description: desc,
+    suggestedCategory: suggestions[i]?.suggestedCategory || 'Outros',
+    suggestedSubcategory: suggestions[i]?.suggestedSubcategory,
+    confidence: suggestions[i]?.confidence ?? 0,
+  }));
 }

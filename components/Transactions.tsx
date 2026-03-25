@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { Trash2, List, UploadCloud, Search, X, Pencil, Save } from 'lucide-react';
-import { Transaction, MatchStatus } from '../types.ts';
+import { Transaction, Category } from '../types.ts';
 import { Button } from './ui/Button.tsx';
 import { parseBRLAmount } from '../services/dataService.ts';
 
 interface TransactionsProps {
   transactions: Transaction[];
+  categories: Category[];
   onDeleteTransaction: (id: string) => Promise<void>;
   onUpdateTransaction: (transaction: Transaction) => Promise<void>;
   onNavigateToUpload: () => void;
@@ -18,17 +19,20 @@ interface EditDraft {
   amount: string;
   purchaseDate: string;
   category: string;
+  subcategory: string;
   cardIssuer: string;
 }
 
 export const Transactions: React.FC<TransactionsProps> = ({
   transactions,
+  categories,
   onDeleteTransaction,
   onUpdateTransaction,
   onNavigateToUpload,
 }) => {
   const [deletingId, setDeletingId]   = useState<string | null>(null);
   const [search, setSearch]           = useState('');
+  const [auditFilter, setAuditFilter] = useState<'all' | 'no-category' | 'no-subcategory'>('all');
   const [editingTx, setEditingTx]     = useState<Transaction | null>(null);
   const [editDraft, setEditDraft]     = useState<EditDraft | null>(null);
   const [editSaving, setEditSaving]   = useState(false);
@@ -39,13 +43,20 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const base = [...transactions].sort((a, b) =>
       (b.purchaseDate || b.date).localeCompare(a.purchaseDate || a.date)
     );
-    if (!q) return base;
-    return base.filter(t =>
-      t.description.toLowerCase().includes(q) ||
-      t.category.toLowerCase().includes(q) ||
-      (t.cardIssuer || '').toLowerCase().includes(q)
-    );
-  }, [transactions, search]);
+    let result = q
+      ? base.filter(t =>
+          t.description.toLowerCase().includes(q) ||
+          t.category.toLowerCase().includes(q) ||
+          (t.cardIssuer || '').toLowerCase().includes(q)
+        )
+      : base;
+    if (auditFilter === 'no-category') {
+      result = result.filter(t => !t.category || t.category === 'Outros');
+    } else if (auditFilter === 'no-subcategory') {
+      result = result.filter(t => t.category && t.category !== 'Outros' && !t.subcategory?.trim());
+    }
+    return result;
+  }, [transactions, search, auditFilter]);
 
   const handleDelete = async (t: Transaction) => {
     const confirmed = window.confirm(
@@ -68,6 +79,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
       amount:       t.amount.toFixed(2).replace('.', ','),
       purchaseDate: t.purchaseDate || t.date,
       category:     t.category || '',
+      subcategory:  t.subcategory || '',
       cardIssuer:   t.cardIssuer || '',
     });
     setTimeout(() => descRef.current?.focus(), 60);
@@ -85,6 +97,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         purchaseDate: editDraft.purchaseDate,
         date:         editDraft.purchaseDate,
         category:     editDraft.category.trim() || 'Outros',
+        subcategory:  editDraft.subcategory.trim() || undefined,
         cardIssuer:   (editDraft.cardIssuer.trim() || undefined) as any,
       };
       await onUpdateTransaction(updated);
@@ -162,6 +175,27 @@ export const Transactions: React.FC<TransactionsProps> = ({
               )}
             </div>
 
+            {/* Audit filter pills */}
+            <div className="px-4 py-2 border-b border-neutral-100 flex items-center gap-2 flex-wrap">
+              {([
+                { id: 'all',            label: 'Todas' },
+                { id: 'no-category',    label: 'Sem Categoria' },
+                { id: 'no-subcategory', label: 'Sem Subcategoria' },
+              ] as const).map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setAuditFilter(f.id)}
+                  className={`text-xs font-bold px-3 py-1 rounded-full border transition-all ${
+                    auditFilter === f.id
+                      ? 'bg-primary border-primary text-white'
+                      : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-400'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             {/* Table header */}
             <div className="bg-neutral-50 border-b border-neutral-200 px-4 py-2.5 grid grid-cols-12 gap-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
               <div className="col-span-2">Data</div>
@@ -176,7 +210,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             <div className="divide-y divide-neutral-50 max-h-[calc(100vh-320px)] overflow-y-auto">
               {filtered.length === 0 ? (
                 <p className="text-center text-sm text-neutral-400 py-12">
-                  Nenhum resultado para <strong>"{search}"</strong>
+                  Nenhum resultado para os filtros aplicados.
                 </p>
               ) : (
                 filtered.map(t => {
@@ -197,10 +231,15 @@ export const Transactions: React.FC<TransactionsProps> = ({
                       <div className={`col-span-2 text-right font-bold ${t.type === 'income' ? 'text-green-600' : 'text-neutral-900'}`}>
                         {t.type === 'income' ? '+' : ''}{formatBRL(t.amount)}
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-2 flex flex-col gap-0.5">
                         <span className="inline-block bg-neutral-100 text-neutral-600 text-[10px] font-bold px-2 py-0.5 rounded-full truncate max-w-full">
                           {t.category || '—'}
                         </span>
+                        {t.category && t.category !== 'Outros' && !t.subcategory?.trim() && (
+                          <span className="inline-block bg-amber-50 border border-amber-200 text-amber-600 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                            Sem subcategoria
+                          </span>
+                        )}
                       </div>
                       <div className="col-span-1 text-[10px] font-bold uppercase text-neutral-400 truncate">
                         {t.cardIssuer || '—'}
@@ -232,7 +271,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
             <div className="bg-neutral-50 border-t border-neutral-200 px-4 py-2.5 flex justify-between items-center text-xs text-neutral-500">
               <span>
                 {filtered.length} de {transactions.length} lançamento{transactions.length !== 1 ? 's' : ''}
-                {search ? ` · filtrado por "${search}"` : ''}
+                {search ? ` · "${search}"` : ''}
+                {auditFilter === 'no-category' ? ' · Sem Categoria' : auditFilter === 'no-subcategory' ? ' · Sem Subcategoria' : ''}
               </span>
               <span className="font-bold text-neutral-900 text-sm">
                 {formatBRL(totalFiltered)}
@@ -318,24 +358,46 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 </div>
               </div>
 
-              {/* Category + Card/Account (2 col) */}
+              {/* Category + Subcategory (2 col) */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1">Categoria</label>
-                  <input
+                  <select
                     value={editDraft.category}
-                    onChange={e => setEditDraft(d => d ? { ...d, category: e.target.value } : d)}
+                    onChange={e => setEditDraft(d => d ? { ...d, category: e.target.value, subcategory: '' } : d)}
                     className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
+                  >
+                    <option value="">Sem categoria</option>
+                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1">Conta / Cartão</label>
-                  <input
-                    value={editDraft.cardIssuer}
-                    onChange={e => setEditDraft(d => d ? { ...d, cardIssuer: e.target.value } : d)}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
+                  <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1">Subcategoria</label>
+                  <select
+                    value={editDraft.subcategory}
+                    disabled={!editDraft.category || editDraft.category === 'Outros'}
+                    onChange={e => setEditDraft(d => d ? { ...d, subcategory: e.target.value } : d)}
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-neutral-50 disabled:text-neutral-400"
+                  >
+                    <option value="">Nenhuma</option>
+                    {categories.find(c => c.name === editDraft.category)?.subcategories.map(sub => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                    {editDraft.subcategory && !categories.find(c => c.name === editDraft.category)?.subcategories.includes(editDraft.subcategory) && (
+                      <option value={editDraft.subcategory}>{editDraft.subcategory} (Sugerido IA)</option>
+                    )}
+                  </select>
                 </div>
+              </div>
+
+              {/* Conta / Cartão */}
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1">Conta / Cartão</label>
+                <input
+                  value={editDraft.cardIssuer}
+                  onChange={e => setEditDraft(d => d ? { ...d, cardIssuer: e.target.value } : d)}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
             </div>
 

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard, List, Wallet as WalletIcon, CheckSquare, Target } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard, List, Wallet as WalletIcon, CheckSquare, Target, Briefcase } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { Upload } from './components/Upload.tsx';
@@ -15,6 +15,7 @@ import { Transactions } from './components/Transactions.tsx';
 import { Wallet } from './components/Wallet.tsx';
 import { Tasks } from './components/Tasks.tsx';
 import { Habits } from './components/Habits.tsx';
+import { Projects } from './components/Projects.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
 import { categorizeTransactions, extractInvoiceData } from './services/ai/index.ts';
@@ -135,15 +136,31 @@ const AppContent: React.FC = () => {
       );
 
       const newTransactions: Transaction[] = extractedData.map((item, i) => {
-        const suggestion = aiSuggestions.find(s => s.description === item.description);
+        const suggestion = aiSuggestions[i]; // index-match garante alinhamento correto
+        const resolvedCategory = suggestion?.suggestedCategory || 'Outros';
+        const matchedCategory = categories.find(c => c.name === resolvedCategory);
+        const aiSub = suggestion?.suggestedSubcategory?.trim();
+
+        // Match case-insensitive (ignoring spaces) against official subcategories.
+        // If found → use the official casing. If not found → save AI suggestion verbatim
+        // to preserve the information instead of losing it as undefined.
+        let resolvedSubcategory: string | undefined;
+        if (aiSub) {
+          const normalizedAiSub = aiSub.toLowerCase().replace(/\s+/g, '');
+          const officialMatch = matchedCategory?.subcategories.find(
+            s => s.toLowerCase().replace(/\s+/g, '') === normalizedAiSub
+          );
+          resolvedSubcategory = officialMatch ?? aiSub;
+        }
+
         return {
           id: `t-${Date.now()}-${i}`,
           date: item.purchaseDate,
           purchaseDate: item.purchaseDate,
           description: item.description,
           amount: parseBRLAmount(item.amount),
-          category: suggestion?.suggestedCategory || 'Outros',
-          subcategory: suggestion?.suggestedSubcategory,
+          category: resolvedCategory,
+          subcategory: resolvedSubcategory,
           confidence: suggestion?.confidence,
           invoiceId: invoiceId,
           cardIssuer: issuer,
@@ -199,33 +216,46 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleReviewInvoice = (invoiceTransactions: Transaction[]) => {
+    setCurrentFileEntry(null);
+    setTransactions(invoiceTransactions);
+    navigate('/review');
+  };
+
   const handleAutoFinalizeExtraction = async () => {
-    if (!user || !currentFileEntry || transactions.length === 0) return;
+    if (!user || transactions.length === 0) return;
 
     setIsProcessing(true);
     try {
-      const finalizedTransactions = transactions.map(t => ({
-        ...t,
-        status: MatchStatus.MATCHED
-      }));
-
-      await dataService.saveInvoice({
-        ...currentFileEntry,
-        transactionCount: finalizedTransactions.length
-      }, user.id);
-
-      await dataService.saveTransactions(finalizedTransactions, user.id);
+      if (currentFileEntry) {
+        // Fluxo normal: nova fatura — salva cabeçalho + transações novas
+        const finalizedTransactions = transactions.map(t => ({
+          ...t,
+          status: MatchStatus.MATCHED
+        }));
+        await dataService.saveInvoice({
+          ...currentFileEntry,
+          transactionCount: finalizedTransactions.length
+        }, user.id);
+        await dataService.saveTransactions(finalizedTransactions, user.id);
+        setToast({
+          message: `${finalizedTransactions.length} lançamento${finalizedTransactions.length !== 1 ? 's' : ''} salvo${finalizedTransactions.length !== 1 ? 's' : ''} com sucesso!`,
+          type: 'success'
+        });
+        navigate('/');
+      } else {
+        // Re-revisão de fatura existente — atualiza cada transação pelo ID
+        await Promise.all(transactions.map(t => dataService.updateTransaction(t, user.id)));
+        setToast({
+          message: `${transactions.length} lançamento${transactions.length !== 1 ? 's' : ''} atualizado${transactions.length !== 1 ? 's' : ''} com sucesso!`,
+          type: 'success'
+        });
+        navigate('/invoices');
+      }
 
       await loadData();
       setTransactions([]);
       setCurrentFileEntry(null);
-
-      setToast({
-        message: `${finalizedTransactions.length} lançamento${finalizedTransactions.length !== 1 ? 's' : ''} salvo${finalizedTransactions.length !== 1 ? 's' : ''} com sucesso!`,
-        type: 'success'
-      });
-
-      navigate('/');
     } catch (e: any) {
       console.error("Erro ao finalizar extração:", e);
       setToast({
@@ -252,6 +282,7 @@ const AppContent: React.FC = () => {
           <SidebarItem to="/" icon={<LayoutDashboard size={20}/>} label="Dashboard" active={location.pathname === '/'} />
           <SidebarItem to="/tasks" icon={<CheckSquare size={20}/>} label="Tarefas" active={location.pathname === '/tasks'} />
           <SidebarItem to="/habits" icon={<Target size={20}/>} label="Hábitos" active={location.pathname === '/habits'} />
+          <SidebarItem to="/projects" icon={<Briefcase size={20}/>} label="Projetos" active={location.pathname === '/projects'} />
           <SidebarItem to="/upload" icon={<UploadIcon size={20}/>} label="Importar" active={location.pathname === '/upload'} />
           <SidebarItem to="/invoices" icon={<FileText size={20}/>} label="Faturas" active={location.pathname === '/invoices'} />
           <SidebarItem to="/manual" icon={<PlusSquare size={20}/>} label="Manual" active={location.pathname === '/manual'} />
@@ -285,7 +316,7 @@ const AppContent: React.FC = () => {
            <Routes>
              <Route path="/" element={<Dashboard files={files} allTransactions={[...allHistoryTransactions, ...transactions]} onNavigate={navigate} />} />
              <Route path="/upload" element={<Upload onUploadComplete={handleUploadComplete} onCancel={() => navigate('/')} />} />
-             <Route path="/invoices" element={<Invoices files={files} allTransactions={allHistoryTransactions} onDelete={handleDeleteInvoice} onNavigateToUpload={() => navigate('/upload')} />} />
+             <Route path="/invoices" element={<Invoices files={files} allTransactions={allHistoryTransactions} onDelete={handleDeleteInvoice} onNavigateToUpload={() => navigate('/upload')} onReviewInvoice={handleReviewInvoice} />} />
              <Route path="/manual" element={<ManualEntry categories={categories} tags={tags} accounts={accounts} creditCards={creditCards} onUpdateCategories={handleUpdateCategories} onAddTransaction={async (t) => {
                setIsProcessing(true);
                try {
@@ -299,7 +330,7 @@ const AppContent: React.FC = () => {
                  setIsProcessing(false);
                }
              }} onCancel={() => navigate('/')} />} />
-             <Route path="/transactions" element={<Transactions transactions={allHistoryTransactions} onDeleteTransaction={handleDeleteTransaction} onUpdateTransaction={handleUpdateTransaction} onNavigateToUpload={() => navigate('/upload')} />} />
+             <Route path="/transactions" element={<Transactions transactions={allHistoryTransactions} categories={categories} onDeleteTransaction={handleDeleteTransaction} onUpdateTransaction={handleUpdateTransaction} onNavigateToUpload={() => navigate('/upload')} />} />
              <Route path="/review" element={<Review 
                 transactions={transactions} 
                 categories={categories} 
@@ -331,6 +362,7 @@ const AppContent: React.FC = () => {
                  setIsProcessing(false);
                }
              }} onCreateSystemMatch={(id) => setTransactions(p => p.map(t => t.id === id ? {...t, status: MatchStatus.MATCHED} : t))} />} />
+             <Route path="/projects" element={<Projects userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
              <Route path="/tasks" element={<Tasks userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
              <Route path="/habits" element={<Habits userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
              <Route path="/wallet" element={<Wallet userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />

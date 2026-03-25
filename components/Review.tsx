@@ -155,12 +155,13 @@ export const Review: React.FC<ReviewProps> = ({
       <div className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden flex flex-col">
         <div className="bg-neutral-50 border-b border-neutral-200 px-6 py-3 grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider select-none">
             <div className="col-span-1 cursor-pointer" onClick={() => handleSort('purchaseDate')}>Data</div>
-            <div className="col-span-3">Descrição</div>
+            <div className="col-span-2">Descrição</div>
             <div className="col-span-1">Banco</div>
             <div className="col-span-1 text-right cursor-pointer" onClick={() => handleSort('amount')}>Valor</div>
             <div className="col-span-2">Categoria</div>
             <div className="col-span-2">Subcategoria</div>
-            <div className="col-span-2 text-center">Ações</div>
+            <div className="col-span-2 text-center">Tags</div>
+            <div className="col-span-1 text-center">Ações</div>
         </div>
         
         <div className="overflow-y-auto flex-1">
@@ -169,7 +170,7 @@ export const Review: React.FC<ReviewProps> = ({
                 return (
                     <div key={t.id} className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-neutral-100 hover:bg-blue-50/30 items-center transition-colors">
                         <div className="col-span-1 text-xs text-neutral-900 font-bold">{formatDateBr(t.purchaseDate)}</div>
-                        <div className="col-span-3 text-sm text-neutral-700 truncate">{t.description}</div>
+                        <div className="col-span-2 text-sm text-neutral-700 truncate">{t.description}</div>
                         <div className="col-span-1">
                             <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-600 truncate max-w-full">
                                {t.cardIssuer}
@@ -198,7 +199,7 @@ export const Review: React.FC<ReviewProps> = ({
                             </button>
                         </div>
                         <div className="col-span-2 flex items-center gap-1">
-                            <select 
+                            <select
                                className="text-[10px] bg-white border border-neutral-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-primary flex-1 outline-none disabled:bg-neutral-100 disabled:text-neutral-400"
                                value={t.subcategory || ''}
                                disabled={!currentCategory}
@@ -208,6 +209,9 @@ export const Review: React.FC<ReviewProps> = ({
                                     currentCategory.subcategories.map(sub => <option key={sub} value={sub}>{sub}</option>)
                                 ) : (
                                     <option value="">Nenhuma</option>
+                                )}
+                                {t.subcategory && currentCategory && !currentCategory.subcategories.includes(t.subcategory) && (
+                                    <option value={t.subcategory}>{t.subcategory} (Sugerido IA)</option>
                                 )}
                             </select>
                             <button 
@@ -219,17 +223,33 @@ export const Review: React.FC<ReviewProps> = ({
                               <Plus size={12}/>
                             </button>
                         </div>
-                        <div className="col-span-2 flex justify-center items-center gap-2">
-                            <div className="flex flex-wrap gap-1 justify-center">
-                              {t.tags?.slice(0, 1).map(tagName => {
-                                const tagObj = tags.find(tag => tag.name === tagName);
-                                return (
-                                  <span key={tagName} className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase ${tagObj?.color || 'bg-gray-100'}`}>
-                                    {tagName.split(' ')[0]}
-                                  </span>
-                                );
-                              })}
-                            </div>
+                        <div className="col-span-2 flex items-center justify-center gap-1.5">
+                            {(['Pessoais', 'Empresa'] as const).map(tag => {
+                              const active = t.tags?.includes(tag);
+                              return (
+                                <button
+                                  key={tag}
+                                  onClick={() => {
+                                    const current = t.tags || [];
+                                    const newTags = active
+                                      ? current.filter(x => x !== tag)
+                                      : [...current, tag];
+                                    onUpdateTransaction(t.id, { tags: newTags });
+                                  }}
+                                  className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                                    active
+                                      ? tag === 'Pessoais'
+                                        ? 'bg-purple-100 border-purple-300 text-purple-700'
+                                        : 'bg-blue-100 border-blue-300 text-blue-700'
+                                      : 'bg-white border-neutral-200 text-neutral-400 hover:border-neutral-400'
+                                  }`}
+                                >
+                                  {tag}
+                                </button>
+                              );
+                            })}
+                        </div>
+                        <div className="col-span-1 flex items-center justify-center gap-1">
                             <button onClick={() => openEditModal(t)} className="text-neutral-400 hover:text-primary p-1" title="Editar"><Edit2 size={12}/></button>
                             <button onClick={() => onDeleteTransaction(t.id)} className="text-neutral-300 hover:text-red-500 p-1" title="Excluir"><Trash2 size={12}/></button>
                         </div>
@@ -284,14 +304,17 @@ export const Review: React.FC<ReviewProps> = ({
                               Subcategoria
                               <button onClick={() => handleCreateSubcategory(editCategory)} className="text-primary hover:underline text-[10px]">Nova +</button>
                             </label>
-                            <select 
-                                className="w-full border rounded-lg p-2 text-sm outline-none" 
-                                value={editSubcategory} 
+                            <select
+                                className="w-full border rounded-lg p-2 text-sm outline-none"
+                                value={editSubcategory}
                                 onChange={e => setEditSubcategory(e.target.value)}
                             >
                                 {categories.find(c => c.name === editCategory)?.subcategories.map(sub => (
                                     <option key={sub} value={sub}>{sub}</option>
                                 )) || <option value="">Sem subcategorias</option>}
+                                {editSubcategory && !categories.find(c => c.name === editCategory)?.subcategories.includes(editSubcategory) && (
+                                    <option value={editSubcategory}>{editSubcategory} (Sugerido IA)</option>
+                                )}
                             </select>
                         </div>
                     </div>

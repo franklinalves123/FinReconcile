@@ -48,7 +48,7 @@ export const dataService = {
       amount: Number(t.amount || 0),
       category: t.category || 'Outros',
       subcategory: t.subcategory || '',
-      tags: Array.isArray(t.tags) ? t.tags : [],
+      tags: Array.isArray(t.tags) ? t.tags.map((tag: string) => tag === 'Pessoal' ? 'Pessoais' : tag) : [],
       invoiceId: t.invoice_id || 'manual-entry',
       status: t.status,
       cardIssuer: t.card_issuer || 'Outros',
@@ -294,7 +294,7 @@ export const dataService = {
   async getProjects(userId: string): Promise<Project[]> {
     const { data, error } = await supabase
       .from('projects')
-      .select('id, user_id, created_at, name, status, progress')
+      .select('id, user_id, created_at, name, status, progress, description, due_date')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) { console.error('Erro ao buscar projetos:', error); throw error; }
@@ -305,12 +305,22 @@ export const dataService = {
       name: r.name,
       status: r.status,
       progress: Number(r.progress ?? 0),
+      description: r.description ?? undefined,
+      dueDate: r.due_date ?? undefined,
     }));
   },
 
   async saveProject(project: Project, userId: string): Promise<void> {
     const { error } = await supabase.from('projects').upsert(
-      { id: project.id, user_id: userId, name: project.name, status: project.status, progress: project.progress },
+      {
+        id: project.id,
+        user_id: userId,
+        name: project.name,
+        status: project.status,
+        progress: project.progress,
+        description: project.description ?? null,
+        due_date: project.dueDate ?? null,
+      },
       { onConflict: 'id' }
     );
     if (error) { console.error('Erro ao salvar projeto:', error); throw error; }

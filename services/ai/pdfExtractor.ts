@@ -117,6 +117,7 @@ async function extractWithGemini(
     },
     config: {
       responseMimeType: "application/json",
+      maxOutputTokens: 8192,
       responseSchema: {
         type: Type.OBJECT,
         required: ["transactions"],

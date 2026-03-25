@@ -34,6 +34,7 @@ async function callOpenAIChat(prompt: string): Promise<string> {
       model: OPENAI_MODEL,
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
+      max_tokens: 8192,
     }),
   });
 
@@ -72,16 +73,15 @@ export async function categorizeTransactionsWithOpenAI(
 ): Promise<CategorySuggestion[]> {
   const prompt = buildCategorizePrompt(descriptions, availableCategories);
   const text = await callOpenAIChat(prompt);
+  console.log(`[Categorizer] OpenAI raw response (${descriptions.length} items):`, text?.slice(0, 200));
   const result = JSON.parse(text || '{"suggestions":[]}');
   const suggestions: CategorySuggestion[] = result.suggestions || [];
 
-  if (suggestions.length !== descriptions.length) {
-    return descriptions.map((desc, i) => suggestions[i] ?? {
-      description: desc,
-      suggestedCategory: 'Outros',
-      confidence: 0,
-    });
-  }
-
-  return suggestions;
+  // Mapeia por índice com description original — não depende de string match.
+  return descriptions.map((desc, i) => ({
+    description: desc,
+    suggestedCategory: suggestions[i]?.suggestedCategory || 'Outros',
+    suggestedSubcategory: suggestions[i]?.suggestedSubcategory,
+    confidence: suggestions[i]?.confidence ?? 0,
+  }));
 }

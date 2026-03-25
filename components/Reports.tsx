@@ -76,7 +76,9 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
     filteredData.forEach(t => {
       if (!map[t.category]) map[t.category] = { total: 0, sub: {} };
       map[t.category].total += Number(t.amount || 0);
-      const subName = t.subcategory || 'Sem Subcategoria';
+      // Usa o valor da string diretamente (incluindo sugestões da IA não cadastradas oficialmente).
+      // Só cai em 'Sem Subcategoria' se o campo estiver vazio ou nulo.
+      const subName = t.subcategory?.trim() || 'Sem Subcategoria';
       map[t.category].sub[subName] = (map[t.category].sub[subName] || 0) + Number(t.amount || 0);
     });
 

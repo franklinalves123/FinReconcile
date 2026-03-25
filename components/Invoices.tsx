@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { FileText, Trash2, Calendar, CreditCard, UploadCloud, AlertTriangle } from 'lucide-react';
+import { FileText, Trash2, Calendar, CreditCard, UploadCloud, AlertTriangle, Pencil } from 'lucide-react';
 import { InvoiceFile, Transaction } from '../types.ts';
 import { Button } from './ui/Button.tsx';
 
@@ -9,6 +9,7 @@ interface InvoicesProps {
   allTransactions: Transaction[];
   onDelete: (id: string) => Promise<void>;
   onNavigateToUpload: () => void;
+  onReviewInvoice: (transactions: Transaction[]) => void;
 }
 
 export const Invoices: React.FC<InvoicesProps> = ({
@@ -16,6 +17,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
   allTransactions,
   onDelete,
   onNavigateToUpload,
+  onReviewInvoice,
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -152,15 +154,22 @@ export const Invoices: React.FC<InvoicesProps> = ({
                       </span>
                     </div>
 
-                    {/* Botão excluir */}
-                    <div className="col-span-1 flex justify-center">
+                    {/* Botões de ação */}
+                    <div className="col-span-1 flex justify-center items-center gap-1">
+                      <button
+                        onClick={() => onReviewInvoice(allTransactions.filter(t => t.invoiceId === file.id))}
+                        title="Revisar e re-categorizar transações"
+                        className="p-2 text-neutral-300 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        <Pencil size={15} />
+                      </button>
                       <button
                         onClick={() => handleDeleteClick(file)}
                         disabled={isDeleting}
                         title="Excluir fatura"
                         className="p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:cursor-not-allowed"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </div>
