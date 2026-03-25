@@ -17,7 +17,8 @@
 import { buildCategorizePrompt, buildExtractInvoicePrompt } from './prompts.ts';
 import type { CategorySuggestion, CategoryPattern, ExtractedTransaction } from './types.ts';
 
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const ANTHROPIC_MODEL_EXTRACT = 'claude-sonnet-4-6'; // Sonnet para extração de PDF (maior capacidade)
+const ANTHROPIC_MODEL_CATEGORIZE = 'claude-haiku-4-5-20251001'; // Haiku para categorização (velocidade/custo)
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 
@@ -32,7 +33,8 @@ function stripCodeFences(text: string): string {
 
 async function callAnthropic(
   messages: object[],
-  maxTokens = 2048
+  maxTokens = 2048,
+  model = ANTHROPIC_MODEL_CATEGORIZE
 ): Promise<string> {
   const key = getAnthropicKey();
   if (!key) throw new Error('VITE_ANTHROPIC_API_KEY não configurada.');
@@ -47,7 +49,7 @@ async function callAnthropic(
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
+      model,
       max_tokens: maxTokens,
       messages,
     }),
@@ -98,7 +100,7 @@ Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markd
     },
   ];
 
-  const text = await callAnthropic(messages, 8192);
+  const text = await callAnthropic(messages, 8192, ANTHROPIC_MODEL_EXTRACT);
   const result = JSON.parse(text || '{"transactions":[]}');
   return result.transactions || [];
 }
@@ -119,7 +121,7 @@ Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markd
 {"suggestions": [{"description": "...", "suggestedCategory": "...", "confidence": 0.0}]}`;
 
   const messages = [{ role: 'user', content: prompt }];
-  const text = await callAnthropic(messages, 4096);
+  const text = await callAnthropic(messages, 4096, ANTHROPIC_MODEL_CATEGORIZE);
   console.log(`[Categorizer] Anthropic raw response (${descriptions.length} items):`, text?.slice(0, 200));
   const result = JSON.parse(text || '{"suggestions":[]}');
   const suggestions: CategorySuggestion[] = result.suggestions || [];

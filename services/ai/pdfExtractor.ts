@@ -60,10 +60,21 @@ export async function extractInvoiceData(
     return result.transactions || [];
   }
 
-  // Layer 1: Fallback chain — Gemini → OpenAI → Anthropic
+  // Layer 1: Fallback chain — Anthropic (Sonnet) → Gemini → OpenAI
   const errors: string[] = [];
 
-  // Provider 1: Gemini
+  // Provider 1: Anthropic/Claude Sonnet (primário — melhor leitura de PDFs complexos)
+  if (anthropicKey) {
+    try {
+      return await extractInvoiceDataWithAnthropic(fileBase64, issuer);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn('[AI Fallback] Anthropic falhou na extração, tentando Gemini:', msg);
+      errors.push(`Anthropic: ${msg}`);
+    }
+  }
+
+  // Provider 2: Gemini (fallback — bom para a maioria dos layouts)
   if (apiKey) {
     try {
       return await extractWithGemini(fileBase64, issuer);
@@ -74,24 +85,13 @@ export async function extractInvoiceData(
     }
   }
 
-  // Provider 2: OpenAI (lança imediatamente — PDF inline não suportado)
+  // Provider 3: OpenAI (lança imediatamente — PDF inline não suportado)
   if (openaiKey) {
     try {
       return await extractInvoiceDataWithOpenAI(fileBase64, issuer);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      console.warn('[AI Fallback] OpenAI falhou na extração, tentando Anthropic:', msg);
       errors.push(`OpenAI: ${msg}`);
-    }
-  }
-
-  // Provider 3: Anthropic (suporte nativo a PDF)
-  if (anthropicKey) {
-    try {
-      return await extractInvoiceDataWithAnthropic(fileBase64, issuer);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      errors.push(`Anthropic: ${msg}`);
     }
   }
 
