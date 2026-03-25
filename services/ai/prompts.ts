@@ -30,7 +30,11 @@ REGRAS OBRIGATÓRIAS — leia com atenção:
 
 ⚠️ CRÍTICO — REGRAS ANTI-TRUNCAMENTO (violação resulta em dados financeiros incorretos):
 8. Você deve percorrer o documento PDF do início ao fim, página por página, sem parar antes do final. É ESTRITAMENTE PROIBIDO resumir, pular páginas, pular seções ou interromper a extração antes de processar a última transação do documento.
-9. Faturas do Santander, Itaú e Porto Bank possuem seções separadas por portador de cartão (ex: "Daiana P Coelho (final *518)", "Franklin A C No (final *113)") e por tipo (nacionais e internacionais). Você DEVE extrair as transações de TODAS as seções de TODOS os portadores. Ignorar qualquer seção é uma falha crítica.
+9. MULTI-CARTÃO / MULTI-SEÇÃO (regra universal — aplica-se a TODOS os bancos): Faturas frequentemente contêm várias seções independentes, cada uma com seu próprio subtotal. Exemplos de formatos:
+   - Inter: seções nomeadas como "CARTÃO 5364****2107", "CARTÃO 2306****9352", "CARTÃO 5364****5274" — cada cartão (titular ou adicional) tem sua própria seção
+   - Porto Bank: seções por portador ("Daiana P Coelho (final *518)", "Franklin A C No (final *113)") com subseções nacionais/internacionais
+   - Santander/Itaú: blocos TITULAR, ADICIONAIS, VIRTUAIS
+   Você DEVE extrair as transações de TODAS as seções e de TODOS os cartões listados. Ignorar qualquer seção ou cartão é uma falha crítica que causa divergência no total. ATENÇÃO: linhas de subtotal como "Total CARTÃO XXXX R$ X.XXX,XX" e pagamentos de fatura ("+R$ X.XXX,XX") devem ser IGNORADAS — apenas as transações individuais de compra devem ser incluídas.
 10. ⚠️ PORTO BANK — TRANSAÇÕES INTERNACIONAIS (regra crítica de valor): As seções "Lançamentos Internacionais" do Porto Bank exibem DUAS colunas numéricas por linha: a primeira é o valor em moeda estrangeira (USD, EUR, etc.) e a segunda é o valor JÁ CONVERTIDO EM REAIS. Você DEVE usar SEMPRE o segundo valor (BRL convertido), que é o maior número da linha. Usar o valor em moeda estrangeira é uma falha crítica que causa divergência de R$ milhares.
     Exemplo correto: "13/02 LUCID TRADING NJ  78,00  428,20" → amount: 428.20 (NÃO 78.00)
     Exemplo correto: "17/02 MyFunded Futures TX  107,00  587,40" → amount: 587.40 (NÃO 107.00)
