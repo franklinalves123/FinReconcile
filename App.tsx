@@ -107,17 +107,39 @@ const AppContent: React.FC = () => {
 
   /**
    * Remove do array extraído as transações que já existem no histórico do usuário.
-   * Match por: mesmo emissor + mesma data + mesmo valor (tolerância de R$ 0,01).
+   * Match por: mesmo emissor + mesma data + mesmo valor (tolerância de R$ 0,01) + descrição similar.
+   *
+   * A descrição é normalizada (minúsculas, sem espaços extras) e comparada com similaridade ≥ 85%
+   * para evitar falso-positivo em parcelas ("IUGU*CLINTHUB Parcela 07 de 12" ≠ "Parcela 08 de 12").
    * Retorna { newTransactions, skipped }.
    */
   const deduplicateAgainstHistory = (
     extracted: Transaction[],
     issuer: CardIssuer,
   ): { newTransactions: Transaction[]; skipped: number } => {
+    const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+    // Calcula similaridade simples: caracteres em comum / max(len a, len b)
+    const similarity = (a: string, b: string): number => {
+      const na = normalize(a);
+      const nb = normalize(b);
+      if (na === nb) return 1;
+      const longer = na.length > nb.length ? na : nb;
+      const shorter = na.length > nb.length ? nb : na;
+      let matches = 0;
+      for (let i = 0; i < shorter.length; i++) {
+        if (longer.includes(shorter[i])) matches++;
+      }
+      return matches / longer.length;
+    };
+
     const existing = allHistoryTransactions.filter(t => t.cardIssuer === issuer);
     const newTransactions = extracted.filter(t => {
       const isDuplicate = existing.some(
-        e => e.purchaseDate === t.purchaseDate && Math.abs(e.amount - t.amount) < 0.02
+        e =>
+          e.purchaseDate === t.purchaseDate &&
+          Math.abs(e.amount - t.amount) < 0.02 &&
+          similarity(e.description, t.description) >= 0.85
       );
       return !isDuplicate;
     });
