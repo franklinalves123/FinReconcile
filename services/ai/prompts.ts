@@ -30,9 +30,14 @@ REGRAS OBRIGATÓRIAS — leia com atenção:
 
 ⚠️ CRÍTICO — REGRAS ANTI-TRUNCAMENTO (violação resulta em dados financeiros incorretos):
 8. Você deve percorrer o documento PDF do início ao fim, página por página, sem parar antes do final. É ESTRITAMENTE PROIBIDO resumir, pular páginas, pular seções ou interromper a extração antes de processar a última transação do documento.
-9. Faturas do Santander, Itaú e Porto Bank frequentemente possuem blocos separados para CARTÃO TITULAR, CARTÕES ADICIONAIS e CARTÕES VIRTUAIS — cada um com seu próprio subtotal. Você DEVE extrair as transações de TODOS esses blocos. Faturas do Porto Bank também podem separar em seções como "COMPRAS PARCELADAS", "COMPRAS À VISTA", "COMPRAS INTERNACIONAIS" e "CARTÕES ADICIONAIS" — todas devem ser incluídas. Ignorar qualquer bloco ou seção é uma falha crítica que causa divergência no valor total da fatura.
-10. A soma dos campos "amount" do seu output DEVE ser aproximadamente igual ao total cobrado na fatura. Se o total calculado for muito inferior ao impresso no PDF, você esqueceu transações — revise e complete antes de retornar.
-11. Para faturas grandes (mais de 30 transações), continue gerando o JSON até o fim. Não há limite de itens no array.
+9. Faturas do Santander, Itaú e Porto Bank possuem seções separadas por portador de cartão (ex: "Daiana P Coelho (final *518)", "Franklin A C No (final *113)") e por tipo (nacionais e internacionais). Você DEVE extrair as transações de TODAS as seções de TODOS os portadores. Ignorar qualquer seção é uma falha crítica.
+10. ⚠️ PORTO BANK — TRANSAÇÕES INTERNACIONAIS (regra crítica de valor): As seções "Lançamentos Internacionais" do Porto Bank exibem DUAS colunas numéricas por linha: a primeira é o valor em moeda estrangeira (USD, EUR, etc.) e a segunda é o valor JÁ CONVERTIDO EM REAIS. Você DEVE usar SEMPRE o segundo valor (BRL convertido), que é o maior número da linha. Usar o valor em moeda estrangeira é uma falha crítica que causa divergência de R$ milhares.
+    Exemplo correto: "13/02 LUCID TRADING NJ  78,00  428,20" → amount: 428.20 (NÃO 78.00)
+    Exemplo correto: "17/02 MyFunded Futures TX  107,00  587,40" → amount: 587.40 (NÃO 107.00)
+    Exceção: se o Dólar de Conversão for R$ 0,0000, a transação já está em BRL — use o valor diretamente.
+11. IGNORE completamente as linhas "DEVOLUCAO IOF COMPRA INTERNACIONAL" (são créditos/estornos, valor negativo) e "PAGAMENTO PIX" (pagamento de fatura). Também ignore a linha "IOF TRANSACOES INTERNACIONAIS" (encargo financeiro separado). Ignore linhas de subtotal como "Lançamentos no cartão (final *XXX) X.XXX,XX".
+12. A soma dos campos "amount" do seu output DEVE ser aproximadamente igual ao total de "Despesas/débitos" informado no resumo da fatura (não ao "Saldo" que inclui ajustes). Se o total calculado for muito inferior, você esqueceu transações — revise e complete.
+13. Para faturas grandes (mais de 30 transações), continue gerando o JSON até o fim. Não há limite de itens no array.
 
 Retorne APENAS o JSON no formato exato solicitado, sem texto introdutório ou explicativo.`;
 }
