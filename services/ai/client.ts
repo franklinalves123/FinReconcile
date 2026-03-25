@@ -17,5 +17,5 @@ export const ai = new GoogleGenAI({ apiKey });
 export const aiConfig: AIModuleConfig = {
   apiKey,
   useEdgeFunction,
-  model: 'gemini-2.0-flash',
+  model: 'gemini-2.5-flash-preview-05-20',
 };
