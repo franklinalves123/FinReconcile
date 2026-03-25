@@ -181,9 +181,10 @@ const AppContent: React.FC = () => {
 
       setTransactions(newTransactions);
       setCurrentFileEntry({ ...newFileEntry, status: 'parsed', transactionCount: newTransactions.length });
-    } catch (error) {
-      console.error("Erro Gemini:", error);
-      alert("Erro ao processar arquivo. Verifique se é um PDF de fatura válido.");
+    } catch (error: any) {
+      console.error("Erro na extração:", error);
+      const detail = error?.message || String(error);
+      setToast({ message: `Falha ao extrair fatura: ${detail}`, type: 'error' });
       navigate('/upload');
     } finally {
       setIsProcessing(false);
