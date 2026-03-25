@@ -40,6 +40,8 @@ const AppContent: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentFileEntry, setCurrentFileEntry] = useState<InvoiceFile | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [expectedInvoiceTotal, setExpectedInvoiceTotal] = useState<number | undefined>(undefined);
+  const [skippedDuplicates, setSkippedDuplicates] = useState(0);
 
   useEffect(() => {
     if (user) loadData();
@@ -103,6 +105,25 @@ const AppContent: React.FC = () => {
     return Array.from(seen.values()).slice(0, 50);
   };
 
+  /**
+   * Remove do array extraído as transações que já existem no histórico do usuário.
+   * Match por: mesmo emissor + mesma data + mesmo valor (tolerância de R$ 0,01).
+   * Retorna { newTransactions, skipped }.
+   */
+  const deduplicateAgainstHistory = (
+    extracted: Transaction[],
+    issuer: CardIssuer,
+  ): { newTransactions: Transaction[]; skipped: number } => {
+    const existing = allHistoryTransactions.filter(t => t.cardIssuer === issuer);
+    const newTransactions = extracted.filter(t => {
+      const isDuplicate = existing.some(
+        e => e.purchaseDate === t.purchaseDate && Math.abs(e.amount - t.amount) < 0.02
+      );
+      return !isDuplicate;
+    });
+    return { newTransactions, skipped: extracted.length - newTransactions.length };
+  };
+
   const handleUpdateCategories = async (newCategories: Category[]) => {
     if (!user) return;
     try {
@@ -129,10 +150,11 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleUploadComplete = async (uploadedFiles: File[], issuer: CardIssuer) => {
-    const today = new Date().toISOString().split('T')[0];
+  const handleUploadComplete = async (uploadedFiles: File[], issuer: CardIssuer, expectedTotal?: number) => {
     const invoiceId = `inv-${Date.now()}`;
-    
+    setExpectedInvoiceTotal(expectedTotal);
+    setSkippedDuplicates(0);
+
     const newFileEntry: InvoiceFile = {
       id: invoiceId,
       name: uploadedFiles[0].name,
@@ -204,8 +226,22 @@ const AppContent: React.FC = () => {
         };
       });
 
-      setTransactions(newTransactions);
-      setCurrentFileEntry({ ...newFileEntry, status: 'parsed', transactionCount: newTransactions.length });
+      // Deduplicação: remove transações já existentes no histórico do usuário
+      const { newTransactions: dedupedTransactions, skipped } = deduplicateAgainstHistory(newTransactions, issuer);
+      setSkippedDuplicates(skipped);
+
+      // Se houve duplicatas, marca o invoice como complemento para identificação visual
+      const invoiceEntry: InvoiceFile = {
+        ...newFileEntry,
+        status: 'parsed',
+        transactionCount: dedupedTransactions.length,
+        name: skipped > 0
+          ? `${uploadedFiles[0].name.replace('.pdf', '')} (+ ${dedupedTransactions.length} novas).pdf`
+          : uploadedFiles[0].name,
+      };
+
+      setTransactions(dedupedTransactions);
+      setCurrentFileEntry(invoiceEntry);
     } catch (error: any) {
       console.error("Erro na extração:", error);
       const detail = error?.message || String(error);
@@ -420,6 +456,8 @@ const AppContent: React.FC = () => {
                 onDeleteTransaction={(id) => setTransactions(p => p.filter(t => t.id !== id))}
                 onUpdateCategories={handleUpdateCategories}
                 onRecategorize={handleRecategorize}
+                expectedTotal={expectedInvoiceTotal}
+                skippedDuplicates={skippedDuplicates}
                 isProcessing={isProcessing}
               />} />
              <Route path="/reconcile" element={<Reconciliation transactions={transactions} systemTransactions={systemTransactions} onComplete={async () => {

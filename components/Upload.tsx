@@ -4,7 +4,7 @@ import { CardIssuer } from '../types.ts';
 import { Button } from './ui/Button.tsx';
 
 interface UploadProps {
-  onUploadComplete: (files: File[], issuer: CardIssuer) => void;
+  onUploadComplete: (files: File[], issuer: CardIssuer, expectedTotal?: number) => void;
   onCancel: () => void;
 }
 
@@ -14,7 +14,15 @@ export const Upload: React.FC<UploadProps> = ({ onUploadComplete, onCancel }) =>
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedIssuer, setSelectedIssuer] = useState<CardIssuer>('Inter');
+  const [invoiceTotalInput, setInvoiceTotalInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const parseInvoiceTotal = (): number | undefined => {
+    if (!invoiceTotalInput.trim()) return undefined;
+    const cleaned = invoiceTotalInput.replace(/R\$\s*/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+    const val = parseFloat(cleaned);
+    return isNaN(val) ? undefined : val;
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -73,8 +81,21 @@ export const Upload: React.FC<UploadProps> = ({ onUploadComplete, onCancel }) =>
         </div>
       </div>
 
-      <div 
-        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-200 cursor-pointer 
+      <div className="bg-white p-6 rounded-xl border border-neutral-200 shadow-sm mb-6">
+        <label className="block text-sm font-semibold text-neutral-700 mb-1">
+          Total da fatura <span className="text-neutral-400 font-normal">(opcional — usado para detectar transações faltantes)</span>
+        </label>
+        <input
+          type="text"
+          placeholder="Ex: 17.895,24"
+          value={invoiceTotalInput}
+          onChange={e => setInvoiceTotalInput(e.target.value)}
+          className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+        />
+      </div>
+
+      <div
+        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-200 cursor-pointer
             ${isDragging ? 'border-primary bg-blue-50 scale-[1.02]' : 'border-neutral-300 hover:border-primary hover:bg-neutral-50'}
         `}
         onDragOver={handleDragOver}
@@ -122,7 +143,7 @@ export const Upload: React.FC<UploadProps> = ({ onUploadComplete, onCancel }) =>
 
             <div className="flex justify-end gap-3 mt-6">
                 <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
-                <Button onClick={() => onUploadComplete(selectedFiles, selectedIssuer)}>
+                <Button onClick={() => onUploadComplete(selectedFiles, selectedIssuer, parseInvoiceTotal())}>
                     Processar Fatura {selectedIssuer}
                 </Button>
             </div>

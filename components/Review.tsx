@@ -15,6 +15,7 @@ interface ReviewProps {
   onUpdateCategories: (categories: Category[]) => Promise<void>;
   onRecategorize?: () => void;
   expectedTotal?: number;
+  skippedDuplicates?: number;
   isProcessing?: boolean;
 }
 
@@ -30,6 +31,7 @@ export const Review: React.FC<ReviewProps> = ({
   onUpdateCategories,
   onRecategorize,
   expectedTotal,
+  skippedDuplicates = 0,
   isProcessing = false,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'purchaseDate', direction: 'desc' });
@@ -144,8 +146,20 @@ export const Review: React.FC<ReviewProps> = ({
 
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col animate-fade-in relative">
+      {skippedDuplicates > 0 && (
+        <div className="mb-3 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm">
+          <span className="text-blue-500 mt-0.5">ℹ️</span>
+          <div>
+            <span className="font-bold text-blue-800">Importação incremental:</span>
+            <span className="text-blue-700 ml-1">
+              {skippedDuplicates} transação{skippedDuplicates !== 1 ? 'ões' : ''} já existente{skippedDuplicates !== 1 ? 's' : ''} no sistema {skippedDuplicates !== 1 ? 'foram ignoradas' : 'foi ignorada'}.
+              Abaixo estão apenas as <strong>{transactions.length} nova{transactions.length !== 1 ? 's' : ''}</strong> encontrada{transactions.length !== 1 ? 's' : ''} nesta reimportação.
+            </span>
+          </div>
+        </div>
+      )}
       {hasDivergence && (
-        <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm">
+        <div className="mb-3 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm">
           <span className="text-amber-500 mt-0.5">⚠️</span>
           <div>
             <span className="font-bold text-amber-800">Divergência detectada:</span>
