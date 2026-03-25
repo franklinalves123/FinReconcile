@@ -14,6 +14,7 @@ interface ReviewProps {
   onDeleteTransaction: (id: string) => void;
   onUpdateCategories: (categories: Category[]) => Promise<void>;
   onRecategorize?: () => void;
+  expectedTotal?: number;
   isProcessing?: boolean;
 }
 
@@ -28,6 +29,7 @@ export const Review: React.FC<ReviewProps> = ({
   onDeleteTransaction,
   onUpdateCategories,
   onRecategorize,
+  expectedTotal,
   isProcessing = false,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'purchaseDate', direction: 'desc' });
@@ -136,8 +138,26 @@ export const Review: React.FC<ReviewProps> = ({
     return `${day}/${month}/${year}`;
   };
 
+  const extractedTotal = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const hasDivergence = expectedTotal != null && Math.abs(extractedTotal - expectedTotal) > 0.5;
+  const divergenceAmount = expectedTotal != null ? expectedTotal - extractedTotal : 0;
+
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col animate-fade-in relative">
+      {hasDivergence && (
+        <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm">
+          <span className="text-amber-500 mt-0.5">⚠️</span>
+          <div>
+            <span className="font-bold text-amber-800">Divergência detectada:</span>
+            <span className="text-amber-700 ml-1">
+              A fatura indica {expectedTotal!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} mas
+              foram extraídos {extractedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
+              Faltam {divergenceAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} —
+              possíveis transações não capturadas (verifique seções de cartões adicionais ou internacionais no PDF).
+            </span>
+          </div>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold text-neutral-900">Revisar Extração</h2>

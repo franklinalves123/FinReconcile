@@ -30,7 +30,7 @@ REGRAS OBRIGATÓRIAS — leia com atenção:
 
 ⚠️ CRÍTICO — REGRAS ANTI-TRUNCAMENTO (violação resulta em dados financeiros incorretos):
 8. Você deve percorrer o documento PDF do início ao fim, página por página, sem parar antes do final. É ESTRITAMENTE PROIBIDO resumir, pular páginas, pular seções ou interromper a extração antes de processar a última transação do documento.
-9. Faturas do Santander e do Itaú frequentemente possuem blocos separados para CARTÃO TITULAR, CARTÕES ADICIONAIS e CARTÕES VIRTUAIS — cada um com seu próprio subtotal. Você DEVE extrair as transações de TODOS esses blocos. Ignorar qualquer bloco é uma falha crítica que causa divergência no valor total da fatura.
+9. Faturas do Santander, Itaú e Porto Bank frequentemente possuem blocos separados para CARTÃO TITULAR, CARTÕES ADICIONAIS e CARTÕES VIRTUAIS — cada um com seu próprio subtotal. Você DEVE extrair as transações de TODOS esses blocos. Faturas do Porto Bank também podem separar em seções como "COMPRAS PARCELADAS", "COMPRAS À VISTA", "COMPRAS INTERNACIONAIS" e "CARTÕES ADICIONAIS" — todas devem ser incluídas. Ignorar qualquer bloco ou seção é uma falha crítica que causa divergência no valor total da fatura.
 10. A soma dos campos "amount" do seu output DEVE ser aproximadamente igual ao total cobrado na fatura. Se o total calculado for muito inferior ao impresso no PDF, você esqueceu transações — revise e complete antes de retornar.
 11. Para faturas grandes (mais de 30 transações), continue gerando o JSON até o fim. Não há limite de itens no array.
 
