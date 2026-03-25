@@ -18,7 +18,7 @@ import { Habits } from './components/Habits.tsx';
 import { Projects } from './components/Projects.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
-import { categorizeTransactions, extractInvoiceData } from './services/ai/index.ts';
+import { categorizeTransactions, extractInvoiceData, type CategorySuggestion } from './services/ai/index.ts';
 import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard as CreditCardType, Task } from './types.ts';
 import { INITIAL_CATEGORIES, DEFAULT_TAGS } from './constants/initialData.ts';
 import { Toast, ToastMessage } from './components/ui/Toast.tsx';
@@ -135,6 +135,16 @@ const AppContent: React.FC = () => {
         categories.map(c => c.name)
       );
 
+      // Detecta se o hard fallback disparou (todos os providers de IA falharam)
+      const allFallback = aiSuggestions.length > 0 &&
+        aiSuggestions.every(s => s.suggestedCategory === 'Outros' && s.confidence === 0);
+      if (allFallback) {
+        setToast({
+          message: 'Categorização automática falhou — provedores de IA indisponíveis. As despesas foram salvas como "Outros". Verifique suas chaves de API e use "Re-categorizar" na tela de revisão.',
+          type: 'error',
+        });
+      }
+
       const newTransactions: Transaction[] = extractedData.map((item, i) => {
         const suggestion = aiSuggestions[i]; // index-match garante alinhamento correto
         const resolvedCategory = suggestion?.suggestedCategory || 'Outros';
@@ -220,6 +230,49 @@ const AppContent: React.FC = () => {
     setCurrentFileEntry(null);
     setTransactions(invoiceTransactions);
     navigate('/review');
+  };
+
+  /** Resolve categoria e subcategoria a partir de uma sugestão da IA. */
+  const resolveCategory = (suggestion: CategorySuggestion | undefined) => {
+    const resolvedCategory = suggestion?.suggestedCategory || 'Outros';
+    const matchedCategory = categories.find(c => c.name === resolvedCategory);
+    const aiSub = suggestion?.suggestedSubcategory?.trim();
+    let resolvedSubcategory: string | undefined;
+    if (aiSub) {
+      const normalizedAiSub = aiSub.toLowerCase().replace(/\s+/g, '');
+      const officialMatch = matchedCategory?.subcategories.find(
+        s => s.toLowerCase().replace(/\s+/g, '') === normalizedAiSub
+      );
+      resolvedSubcategory = officialMatch ?? aiSub;
+    }
+    return { category: resolvedCategory, subcategory: resolvedSubcategory, confidence: suggestion?.confidence };
+  };
+
+  const handleRecategorize = async () => {
+    if (transactions.length === 0) return;
+    setIsProcessing(true);
+    try {
+      const aiSuggestions = await categorizeTransactions(
+        transactions.map(t => t.description),
+        categories.map(c => c.name)
+      );
+      const allFallback = aiSuggestions.length > 0 &&
+        aiSuggestions.every(s => s.suggestedCategory === 'Outros' && s.confidence === 0);
+
+      setTransactions(prev => prev.map((t, i) => ({
+        ...t,
+        ...resolveCategory(aiSuggestions[i]),
+      })));
+
+      setToast(allFallback
+        ? { message: 'Re-categorização falhou — provedores de IA indisponíveis. Verifique suas chaves de API.', type: 'error' }
+        : { message: 'Transações re-categorizadas com sucesso pela IA!', type: 'success' }
+      );
+    } catch (e: any) {
+      setToast({ message: 'Erro ao re-categorizar: ' + (e.message || 'tente novamente.'), type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleAutoFinalizeExtraction = async () => {
@@ -331,14 +384,15 @@ const AppContent: React.FC = () => {
                }
              }} onCancel={() => navigate('/')} />} />
              <Route path="/transactions" element={<Transactions transactions={allHistoryTransactions} categories={categories} onDeleteTransaction={handleDeleteTransaction} onUpdateTransaction={handleUpdateTransaction} onNavigateToUpload={() => navigate('/upload')} />} />
-             <Route path="/review" element={<Review 
-                transactions={transactions} 
-                categories={categories} 
-                tags={tags} 
-                onConfirm={handleAutoFinalizeExtraction} 
-                onUpdateTransaction={(id, up) => setTransactions(p => p.map(t => t.id === id ? {...t, ...up} : t))} 
+             <Route path="/review" element={<Review
+                transactions={transactions}
+                categories={categories}
+                tags={tags}
+                onConfirm={handleAutoFinalizeExtraction}
+                onUpdateTransaction={(id, up) => setTransactions(p => p.map(t => t.id === id ? {...t, ...up} : t))}
                 onDeleteTransaction={(id) => setTransactions(p => p.filter(t => t.id !== id))}
                 onUpdateCategories={handleUpdateCategories}
+                onRecategorize={handleRecategorize}
                 isProcessing={isProcessing}
               />} />
              <Route path="/reconcile" element={<Reconciliation transactions={transactions} systemTransactions={systemTransactions} onComplete={async () => {

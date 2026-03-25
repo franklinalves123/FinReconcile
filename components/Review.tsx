@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Transaction, SortConfig, Category, CardIssuer, Tag } from '../types.ts';
-import { Check, Edit2, ArrowRight, X, Save, CreditCard, Tag as TagIcon, Layers, Trash2, Plus, CheckCircle2 } from 'lucide-react';
+import { Check, Edit2, ArrowRight, X, Save, CreditCard, Tag as TagIcon, Layers, Trash2, Plus, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from './ui/Button.tsx';
 import { parseBRLAmount } from '../services/dataService.ts';
 
@@ -13,20 +13,22 @@ interface ReviewProps {
   onUpdateTransaction: (id: string, updates: Partial<Transaction>) => void;
   onDeleteTransaction: (id: string) => void;
   onUpdateCategories: (categories: Category[]) => Promise<void>;
+  onRecategorize?: () => void;
   isProcessing?: boolean;
 }
 
 const ISSUERS: CardIssuer[] = ['Inter', 'Santander', 'Bradesco', 'BRB', 'Porto Bank', 'Itaú', 'Outros'];
 
-export const Review: React.FC<ReviewProps> = ({ 
-  transactions, 
+export const Review: React.FC<ReviewProps> = ({
+  transactions,
   categories,
   tags,
-  onConfirm, 
+  onConfirm,
   onUpdateTransaction,
   onDeleteTransaction,
   onUpdateCategories,
-  isProcessing = false
+  onRecategorize,
+  isProcessing = false,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'purchaseDate', direction: 'desc' });
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -142,8 +144,18 @@ export const Review: React.FC<ReviewProps> = ({
           <p className="text-neutral-500 text-sm">Classifique categorias, subcategorias e tags antes da conciliação.</p>
         </div>
         <div className="flex gap-3">
-          <Button 
-            onClick={onConfirm} 
+          {onRecategorize && (
+            <Button
+              variant="ghost"
+              onClick={onRecategorize}
+              disabled={isProcessing || transactions.length === 0}
+              className="border border-neutral-200 hover:border-primary hover:text-primary"
+            >
+              <RefreshCw size={14} className="mr-2" /> Re-categorizar com IA
+            </Button>
+          )}
+          <Button
+            onClick={onConfirm}
             isLoading={isProcessing}
             className="bg-primary hover:bg-blue-700 shadow-lg shadow-blue-100 min-w-[220px]"
           >
