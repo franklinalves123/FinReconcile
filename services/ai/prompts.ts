@@ -26,6 +26,7 @@ REGRAS OBRIGATÓRIAS — leia com atenção:
    - amount: valor numérico positivo em reais com ponto decimal (ex: 49.90). Sem "R$", sem pontos de milhar, sem sinal negativo, sem vírgula decimal.
 5. Transações parceladas: inclua como transação individual com o valor da parcela (não o total). CRÍTICO: sempre incorpore o número da parcela na descrição no formato "NOME (XX/YY)". Exemplos: "SCHWARTZMOVEIS (04/10)", "OTICAS PARIS LTDA (03/05)", "IUGU*CLINTHUB (08/12)". Faturas como Santander exibem a parcela numa coluna separada — você deve concatenar descrição + parcela. Isso é obrigatório para que parcelas mensais de uma mesma compra sejam tratadas como transações distintas.
 6. Se uma descrição estiver truncada ou com caracteres estranhos, limpe ao máximo e inclua mesmo assim — não descarte.
+6a. ⚠️ TRANSAÇÕES IDÊNTICAS REPETIDAS — NUNCA ELIMINE: Se o mesmo estabelecimento aparece múltiplas vezes na mesma data com o mesmo valor (ex: 4× "MyFunded Futures" R$ 593,85 em 17/02), inclua CADA ocorrência como transação separada. Plataformas de trading, assinaturas e serviços recorrentes cobram o mesmo valor múltiplas vezes no mesmo dia — isso é legítimo, não é erro de formatação. Eliminar ocorrências idênticas é uma falha crítica que causa divergência no total da fatura.
 7. NUNCA retorne transactions como array vazio se houver itens visíveis no PDF. Isso é uma falha crítica.
 
 ⚠️ CRÍTICO — REGRAS ANTI-TRUNCAMENTO (violação resulta em dados financeiros incorretos):
