@@ -18,7 +18,7 @@ TAREFA: Extraia TODAS as transações de compra listadas nesta fatura e retorne 
 
 REGRAS OBRIGATÓRIAS — leia com atenção:
 1. Inclua CADA linha que representa uma compra, serviço, assinatura ou despesa debitada ao titular.
-2. IGNORE completamente: pagamentos de fatura, saldo anterior, créditos, estornos, IOF separado, encargos de atraso, anuidade, subtotais, totais de seção e linhas de separação visual.
+2. IGNORE completamente: pagamentos de fatura, saldo anterior, créditos, estornos, IOF separado, encargos de atraso, multas por atraso, subtotais, totais de seção e linhas de separação visual. INCLUA anuidade e tarifas bancárias — são despesas reais cobradas ao titular.
 3. Para faturas do ${issuer} ou qualquer layout confuso com colunas misturadas: analise a estrutura da tabela com cuidado. Cada item de compra deve virar uma transação separada.
 4. Campos obrigatórios por transação:
    - purchaseDate: data da compra no formato YYYY-MM-DD. Converta de DD/MM/AA → YYYY-MM-DD ou DD/MM/AAAA → YYYY-MM-DD. Se a data de compra não estiver visível, use a data de lançamento/processamento.
