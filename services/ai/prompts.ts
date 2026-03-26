@@ -24,7 +24,7 @@ REGRAS OBRIGATÓRIAS — leia com atenção:
    - purchaseDate: data da compra no formato YYYY-MM-DD. Converta de DD/MM/AA → YYYY-MM-DD ou DD/MM/AAAA → YYYY-MM-DD. Se a data de compra não estiver visível, use a data de lançamento/processamento.
    - description: nome limpo do estabelecimento ou serviço. Remova: códigos internos numéricos longos, asteriscos isolados, espaços duplos, prefixos de 2 letras sem sentido. Mantenha o nome reconhecível pelo titular.
    - amount: valor numérico positivo em reais com ponto decimal (ex: 49.90). Sem "R$", sem pontos de milhar, sem sinal negativo, sem vírgula decimal.
-5. Transações parceladas (ex: "LOJA X 02/06"): inclua como transação individual com o valor da parcela, não o total.
+5. Transações parceladas: inclua como transação individual com o valor da parcela (não o total). CRÍTICO: sempre incorpore o número da parcela na descrição no formato "NOME (XX/YY)". Exemplos: "SCHWARTZMOVEIS (04/10)", "OTICAS PARIS LTDA (03/05)", "IUGU*CLINTHUB (08/12)". Faturas como Santander exibem a parcela numa coluna separada — você deve concatenar descrição + parcela. Isso é obrigatório para que parcelas mensais de uma mesma compra sejam tratadas como transações distintas.
 6. Se uma descrição estiver truncada ou com caracteres estranhos, limpe ao máximo e inclua mesmo assim — não descarte.
 7. NUNCA retorne transactions como array vazio se houver itens visíveis no PDF. Isso é uma falha crítica.
 
