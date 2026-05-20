@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, CreditCard, List, Wallet as WalletIcon, CheckSquare, Target, Briefcase } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings as SettingsIcon, PieChart, LogOut, Upload as UploadIcon, PlusSquare, List } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { Upload } from './components/Upload.tsx';
@@ -12,14 +12,10 @@ import { ManualEntry } from './components/ManualEntry.tsx';
 import { Reports } from './components/Reports.tsx';
 import { Invoices } from './components/Invoices.tsx';
 import { Transactions } from './components/Transactions.tsx';
-import { Wallet } from './components/Wallet.tsx';
-import { Tasks } from './components/Tasks.tsx';
-import { Habits } from './components/Habits.tsx';
-import { Projects } from './components/Projects.tsx';
 import { Auth } from './components/Auth.tsx';
 import { dataService, parseBRLAmount } from './services/dataService.ts';
 import { categorizeTransactions, extractInvoiceData, type CategorySuggestion, type CategoryPattern } from './services/ai/index.ts';
-import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard as CreditCardType, Task } from './types.ts';
+import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, SystemTransaction, Account, CreditCard as CreditCardType } from './types.ts';
 import { INITIAL_CATEGORIES, DEFAULT_TAGS } from './constants/initialData.ts';
 import { Toast, ToastMessage } from './components/ui/Toast.tsx';
 
@@ -36,7 +32,6 @@ const AppContent: React.FC = () => {
   const [tags, setTags] = useState<Tag[]>(DEFAULT_TAGS);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCardType[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentFileEntry, setCurrentFileEntry] = useState<InvoiceFile | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -405,14 +400,10 @@ const AppContent: React.FC = () => {
         </div>
         <nav className="flex-1 px-4 space-y-1">
           <SidebarItem to="/" icon={<LayoutDashboard size={20}/>} label="Dashboard" active={location.pathname === '/'} />
-          <SidebarItem to="/tasks" icon={<CheckSquare size={20}/>} label="Tarefas" active={location.pathname === '/tasks'} />
-          <SidebarItem to="/habits" icon={<Target size={20}/>} label="Hábitos" active={location.pathname === '/habits'} />
-          <SidebarItem to="/projects" icon={<Briefcase size={20}/>} label="Projetos" active={location.pathname === '/projects'} />
           <SidebarItem to="/upload" icon={<UploadIcon size={20}/>} label="Importar" active={location.pathname === '/upload'} />
           <SidebarItem to="/invoices" icon={<FileText size={20}/>} label="Faturas" active={location.pathname === '/invoices'} />
           <SidebarItem to="/manual" icon={<PlusSquare size={20}/>} label="Manual" active={location.pathname === '/manual'} />
           <SidebarItem to="/transactions" icon={<List size={20}/>} label="Transações" active={location.pathname === '/transactions'} />
-          <SidebarItem to="/wallet" icon={<WalletIcon size={20}/>} label="Carteira" active={location.pathname === '/wallet'} />
           <SidebarItem to="/reports" icon={<PieChart size={20}/>} label="Relatórios" active={location.pathname === '/reports'} />
         </nav>
         <div className="p-4 border-t">
@@ -441,7 +432,7 @@ const AppContent: React.FC = () => {
            <Routes>
              <Route path="/" element={<Dashboard files={files} allTransactions={[...allHistoryTransactions, ...transactions]} onNavigate={navigate} />} />
              <Route path="/upload" element={<Upload onUploadComplete={handleUploadComplete} onCancel={() => navigate('/')} />} />
-             <Route path="/invoices" element={<Invoices files={files} allTransactions={allHistoryTransactions} onDelete={handleDeleteInvoice} onNavigateToUpload={() => navigate('/upload')} onReviewInvoice={handleReviewInvoice} />} />
+             <Route path="/invoices" element={<Invoices files={files} allTransactions={allHistoryTransactions} onDelete={handleDeleteInvoice} onNavigateToUpload={() => navigate('/upload')} onReviewInvoice={handleReviewInvoice} onUpdateInvoiceDate={async (id, date) => { await dataService.updateInvoiceDate(id, date, user.id); setFiles(prev => prev.map(f => f.id === id ? { ...f, uploadDate: date } : f)); }} />} />
              <Route path="/manual" element={<ManualEntry categories={categories} tags={tags} accounts={accounts} creditCards={creditCards} onUpdateCategories={handleUpdateCategories} onAddTransaction={async (t) => {
                setIsProcessing(true);
                try {
@@ -490,11 +481,7 @@ const AppContent: React.FC = () => {
                  setIsProcessing(false);
                }
              }} onCreateSystemMatch={(id) => setTransactions(p => p.map(t => t.id === id ? {...t, status: MatchStatus.MATCHED} : t))} />} />
-             <Route path="/projects" element={<Projects userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
-             <Route path="/tasks" element={<Tasks userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
-             <Route path="/habits" element={<Habits userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
-             <Route path="/wallet" element={<Wallet userId={user.id} onToast={(msg, type) => setToast({ message: msg, type })} />} />
-             <Route path="/reports" element={<Reports allTransactions={allHistoryTransactions} categories={categories} tags={tags} files={files} />} />
+             <Route path="/reports" element={<Reports allTransactions={allHistoryTransactions} categories={categories} tags={tags} files={files} onUpdateTransaction={handleUpdateTransaction} />} />
              <Route path="/settings" element={<Settings currentUserEmail={user.email} categories={categories} tags={tags} onUpdateCategories={handleUpdateCategories} onUpdateTags={handleUpdateTags} />} />
            </Routes>
         </div>

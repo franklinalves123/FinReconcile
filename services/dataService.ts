@@ -29,17 +29,29 @@ export function parseBRLAmount(value: unknown): number {
 
 export const dataService = {
   async getTransactions(userId: string) {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('id, invoice_id, purchase_date, description, amount, category, subcategory, tags, status, card_issuer, notes, type, account_id, installment_id')
-      .eq('user_id', userId)
-      .order('purchase_date', { ascending: false });
-    
-    if (error) {
-      console.error("Erro ao buscar transações:", error);
-      throw error;
+    // PostgREST do Supabase aplica cap server-side de 1000 linhas mesmo com .range() amplo.
+    // Pagina manualmente em chunks até esgotar.
+    const PAGE = 1000;
+    const all: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id, invoice_id, purchase_date, description, amount, category, subcategory, tags, status, card_issuer, notes, type, account_id, installment_id')
+        .eq('user_id', userId)
+        .order('purchase_date', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) {
+        console.error("Erro ao buscar transações:", error);
+        throw error;
+      }
+      if (!data || data.length === 0) break;
+      all.push(...data);
+      if (data.length < PAGE) break;
+      from += PAGE;
     }
-    
+    const data = all;
+
     return data?.map(t => ({
       id: t.id,
       date: t.purchase_date, 
@@ -84,7 +96,7 @@ export const dataService = {
     const { error } = await supabase
       .from('transactions')
       .upsert(txsToSave, {
-        onConflict: 'user_id,purchase_date,description,amount',
+        onConflict: 'id',
         ignoreDuplicates: true
       });
     if (error) {
@@ -113,8 +125,17 @@ export const dataService = {
     })) || [];
   },
 
+  async updateInvoiceDate(invoiceId: string, newDate: Date, userId: string) {
+    const { error } = await supabase
+      .from('invoices')
+      .update({ upload_date: newDate.toISOString() })
+      .eq('id', invoiceId)
+      .eq('user_id', userId);
+    if (error) throw error;
+  },
+
   async saveInvoice(invoice: InvoiceFile, userId: string) {
-    const { error } = await supabase.from('invoices').insert({
+    const { error } = await supabase.from('invoices').upsert({
       id: invoice.id,
       user_id: userId,
       name: invoice.name,
@@ -123,8 +144,8 @@ export const dataService = {
       status: invoice.status,
       transaction_count: invoice.transactionCount,
       card_issuer: invoice.cardIssuer
-    });
-    
+    }, { onConflict: 'id' });
+
     if (error) {
       console.error("Erro Supabase ao salvar fatura:", error.message);
       throw error;

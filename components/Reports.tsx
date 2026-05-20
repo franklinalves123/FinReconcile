@@ -6,11 +6,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
 } from 'recharts';
-import { 
-  Filter, Calendar, Layers, Download, Search, X, 
+import {
+  Filter, Calendar, Layers, Download, Search, X,
   ArrowRightLeft, TrendingUp, TrendingDown, ChevronRight,
   PieChart as PieIcon, BarChart3, List, ArrowUpRight, ArrowDownRight,
-  Tag as TagIcon
+  Tag as TagIcon, Pencil, Save, Check
 } from 'lucide-react';
 import { Button } from './ui/Button.tsx';
 
@@ -19,15 +19,59 @@ interface ReportsProps {
   categories: Category[];
   tags: Tag[];
   files?: InvoiceFile[];
+  onUpdateTransaction?: (t: Transaction) => Promise<void>;
 }
 
 const COLORS = ['#0B5FFF', '#00C853', '#FFB300', '#FF8042', '#8884d8', '#EC4899', '#6366F1', '#14B8A6'];
 
-export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, tags, files = [] }) => {
+export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, tags, files = [], onUpdateTransaction }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCycle, setSelectedCycle] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'visual' | 'table'>('visual');
+
+  // Painel lateral de categoria
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [panelSearch, setPanelSearch] = useState('');
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+
+  const toggleCheck = (id: string) =>
+    setCheckedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const openPanel = (catName: string) => {
+    setOpenCategory(catName);
+    setPanelSearch('');
+    setCheckedIds(new Set());
+    setEditingTx(null);
+  };
+
+  // Edição inline de transação
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editCat, setEditCat] = useState('');
+  const [editSub, setEditSub] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [savingTx, setSavingTx] = useState(false);
+
+  const startEdit = (t: Transaction) => {
+    setEditingTx(t);
+    setEditCat(t.category || '');
+    setEditSub(t.subcategory || '');
+    setEditTags(t.tags || []);
+  };
+
+  const handleSaveTx = async () => {
+    if (!editingTx || !onUpdateTransaction) return;
+    setSavingTx(true);
+    try {
+      await onUpdateTransaction({ ...editingTx, category: editCat, subcategory: editSub, tags: editTags });
+      setEditingTx(null);
+    } finally {
+      setSavingTx(false);
+    }
+  };
+
+  const toggleEditTag = (tag: string) =>
+    setEditTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
 
   const invoiceDateMap = useMemo(() => buildInvoiceDateMap(files), [files]);
 
@@ -139,6 +183,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
   };
 
   return (
+    <>
     <div className="space-y-6 animate-fade-in pb-20">
       {/* Header com Filtros */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 space-y-4">
@@ -272,11 +317,12 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                       </div>
                     ) : (
                       categoryStats.map((cat, i) => (
-                        <div key={cat.name} className="group">
+                        <div key={cat.name} className="group cursor-pointer" onClick={() => openPanel(cat.name)}>
                             <div className="flex justify-between items-end mb-2">
-                                <div>
-                                    <span className="text-xs font-bold text-neutral-800">{cat.name}</span>
-                                    <span className="text-[10px] text-neutral-400 ml-2">({((cat.total / (totals.total || 1)) * 100).toFixed(0)}%)</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-xs font-bold text-neutral-800 group-hover:text-primary transition-colors">{cat.name}</span>
+                                    <span className="text-[10px] text-neutral-400">({((cat.total / (totals.total || 1)) * 100).toFixed(0)}%)</span>
+                                    <ChevronRight size={11} className="text-neutral-300 group-hover:text-primary transition-colors" />
                                 </div>
                                 <span className="text-sm font-black text-neutral-900">{cat.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </div>
@@ -402,5 +448,185 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
         </div>
       )}
     </div>
+
+    {/* Painel lateral — detalhamento de categoria */}
+    {openCategory && (() => {
+      const catTxs = filteredData.filter(t => t.category === openCategory);
+      const panelTxs = catTxs.filter(t =>
+        panelSearch === '' || t.description.toLowerCase().includes(panelSearch.toLowerCase())
+      );
+      const checkedTotal = panelTxs
+        .filter(t => checkedIds.has(t.id))
+        .reduce((s, t) => s + Number(t.amount), 0);
+      const allChecked = panelTxs.length > 0 && panelTxs.every(t => checkedIds.has(t.id));
+
+      return (
+        <>
+          {/* Overlay */}
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setOpenCategory(null)} />
+
+          {/* Drawer */}
+          <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-neutral-400 uppercase tracking-wide font-semibold">Categoria</p>
+                <h3 className="font-bold text-neutral-900 text-lg">{openCategory}</h3>
+                <p className="text-xs text-neutral-400">{catTxs.length} transação{catTxs.length !== 1 ? 'ões' : ''}</p>
+              </div>
+              <button onClick={() => setOpenCategory(null)} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Busca */}
+            <div className="px-5 py-3 border-b border-neutral-100">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar transação..."
+                  value={panelSearch}
+                  onChange={e => setPanelSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Selecionar todos */}
+            {panelTxs.length > 0 && (
+              <div className="px-5 py-2 border-b border-neutral-50 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={() => {
+                    if (allChecked) {
+                      setCheckedIds(prev => { const s = new Set(prev); panelTxs.forEach(t => s.delete(t.id)); return s; });
+                    } else {
+                      setCheckedIds(prev => { const s = new Set(prev); panelTxs.forEach(t => s.add(t.id)); return s; });
+                    }
+                  }}
+                  className="w-4 h-4 rounded accent-primary cursor-pointer"
+                />
+                <span className="text-xs text-neutral-500">Selecionar todas ({panelTxs.length})</span>
+              </div>
+            )}
+
+            {/* Lista de transações */}
+            <div className="flex-1 overflow-y-auto">
+              {panelTxs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-neutral-400 gap-2">
+                  <Search size={24} />
+                  <p className="text-sm">Nenhuma transação encontrada</p>
+                </div>
+              ) : (
+                panelTxs.map(t => (
+                <div key={t.id} className={`border-b border-neutral-50 transition-colors ${editingTx?.id === t.id ? 'bg-amber-50' : checkedIds.has(t.id) ? 'bg-blue-50' : 'hover:bg-neutral-50'}`}>
+                  {editingTx?.id === t.id ? (
+                    /* Formulário de edição inline */
+                    <div className="px-5 py-3 space-y-2">
+                      <p className="text-xs font-semibold text-neutral-700 truncate">{t.description}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-neutral-400 font-medium">Categoria</label>
+                          <select value={editCat} onChange={e => { setEditCat(e.target.value); setEditSub(''); }}
+                            className="w-full border border-neutral-200 rounded-lg px-2 py-1 text-xs outline-none mt-0.5">
+                            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-neutral-400 font-medium">Subcategoria</label>
+                          <select value={editSub} onChange={e => setEditSub(e.target.value)}
+                            className="w-full border border-neutral-200 rounded-lg px-2 py-1 text-xs outline-none mt-0.5">
+                            <option value="">Nenhuma</option>
+                            {(categories.find(c => c.name === editCat)?.subcategories || []).map(s => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-neutral-400 font-medium">Tags</label>
+                        <div className="flex gap-2 mt-1">
+                          {['Pessoais', 'Empresa'].map(tag => (
+                            <button key={tag} onClick={() => toggleEditTag(tag)} type="button"
+                              className={`text-[11px] font-bold px-3 py-1 rounded-full border transition-all ${editTags.includes(tag) ? (tag === 'Pessoais' ? 'bg-purple-100 border-purple-300 text-purple-700' : 'bg-blue-100 border-blue-300 text-blue-700') : 'bg-white border-neutral-200 text-neutral-400'}`}>
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button onClick={() => setEditingTx(null)}
+                          className="flex-1 text-xs py-1.5 border border-neutral-200 rounded-lg text-neutral-500 hover:bg-neutral-50">
+                          Cancelar
+                        </button>
+                        <button onClick={handleSaveTx} disabled={savingTx}
+                          className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-primary text-white rounded-lg hover:opacity-90 disabled:opacity-50 font-semibold">
+                          <Check size={12} /> {savingTx ? 'Salvando…' : 'Salvar'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Linha normal */
+                    <div className="flex items-center gap-3 px-5 py-3">
+                      <input type="checkbox" checked={checkedIds.has(t.id)} onChange={() => toggleCheck(t.id)}
+                        className="w-4 h-4 rounded accent-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0 cursor-default">
+                        <p className="text-sm font-medium text-neutral-800 truncate">{t.description}</p>
+                        <p className="text-[11px] text-neutral-400">
+                          {t.purchaseDate ? t.purchaseDate.split('-').reverse().join('/') : '—'}
+                          {t.category ? ` · ${t.category}` : ''}
+                          {t.subcategory ? ` · ${t.subcategory}` : ''}
+                        </p>
+                        {t.tags && t.tags.length > 0 && (
+                          <div className="flex gap-1 mt-0.5">
+                            {t.tags.map(tag => (
+                              <span key={tag} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${tag === 'Pessoais' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>{tag}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className={`text-sm font-bold ${checkedIds.has(t.id) ? 'text-primary' : 'text-neutral-700'}`}>
+                          {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                        {onUpdateTransaction && (
+                          <button onClick={() => startEdit(t)} title="Editar"
+                            className="p-1 text-neutral-300 hover:text-amber-500 hover:bg-amber-50 rounded transition-colors">
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer — somatório */}
+            <div className="px-5 py-4 border-t border-neutral-200 bg-neutral-50 space-y-2">
+              <div className="flex justify-between text-xs text-neutral-500">
+                <span>Total da categoria</span>
+                <span className="font-bold text-neutral-700">
+                  {catTxs.reduce((s, t) => s + Number(t.amount), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+              {checkedIds.size > 0 && (
+                <div className="flex justify-between items-center bg-primary/10 border border-primary/20 rounded-xl px-3 py-2">
+                  <span className="text-xs font-semibold text-primary">{checkedIds.size} selecionada{checkedIds.size > 1 ? 's' : ''}</span>
+                  <span className="text-sm font-black text-primary">
+                    {checkedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      );
+    })()}
+  </>
   );
 };

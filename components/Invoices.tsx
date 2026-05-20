@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { FileText, Trash2, Calendar, CreditCard, UploadCloud, AlertTriangle, Pencil } from 'lucide-react';
+import { FileText, Trash2, Calendar, CreditCard, UploadCloud, AlertTriangle, Pencil, X, Save } from 'lucide-react';
 import { InvoiceFile, Transaction } from '../types.ts';
 import { Button } from './ui/Button.tsx';
 
@@ -10,6 +10,7 @@ interface InvoicesProps {
   onDelete: (id: string) => Promise<void>;
   onNavigateToUpload: () => void;
   onReviewInvoice: (transactions: Transaction[]) => void;
+  onUpdateInvoiceDate?: (id: string, date: Date) => Promise<void>;
 }
 
 export const Invoices: React.FC<InvoicesProps> = ({
@@ -18,8 +19,29 @@ export const Invoices: React.FC<InvoicesProps> = ({
   onDelete,
   onNavigateToUpload,
   onReviewInvoice,
+  onUpdateInvoiceDate,
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingDate, setEditingDate] = useState<InvoiceFile | null>(null);
+  const [newDateValue, setNewDateValue] = useState('');
+  const [savingDate, setSavingDate] = useState(false);
+
+  const openDateEdit = (file: InvoiceFile) => {
+    setEditingDate(file);
+    const d = new Date(file.uploadDate);
+    setNewDateValue(d.toISOString().split('T')[0]);
+  };
+
+  const handleSaveDate = async () => {
+    if (!editingDate || !newDateValue || !onUpdateInvoiceDate) return;
+    setSavingDate(true);
+    try {
+      await onUpdateInvoiceDate(editingDate.id, new Date(newDateValue + 'T12:00:00'));
+      setEditingDate(null);
+    } finally {
+      setSavingDate(false);
+    }
+  };
 
   // Computa valor total por fatura a partir das transações salvas
   const totalByInvoice = useMemo(() => {
@@ -60,7 +82,12 @@ export const Invoices: React.FC<InvoicesProps> = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-neutral-900">Gestão de Faturas</h2>
-          <p className="text-neutral-500 text-sm">Faturas importadas e conciliadas no sistema.</p>
+          <p className="text-neutral-500 text-sm">
+            Faturas importadas e conciliadas no sistema.
+            <span className="ml-2 text-[10px] font-mono bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">
+              {allTransactions.length} transações
+            </span>
+          </p>
         </div>
         {files.length > 0 && (
           <Button onClick={onNavigateToUpload} variant="outline" size="sm">
@@ -156,6 +183,15 @@ export const Invoices: React.FC<InvoicesProps> = ({
 
                     {/* Botões de ação */}
                     <div className="col-span-1 flex justify-center items-center gap-1">
+                      {onUpdateInvoiceDate && (
+                        <button
+                          onClick={() => openDateEdit(file)}
+                          title="Alterar ciclo (data de referência do relatório)"
+                          className="p-2 text-neutral-300 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
+                        >
+                          <Calendar size={15} />
+                        </button>
+                      )}
                       <button
                         onClick={() => onReviewInvoice(allTransactions.filter(t => t.invoiceId === file.id))}
                         title="Revisar e re-categorizar transações"
@@ -193,6 +229,44 @@ export const Invoices: React.FC<InvoicesProps> = ({
           </>
         )}
       </div>
+
+      {/* Modal — editar data de ciclo */}
+      {editingDate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-lg text-neutral-900">Alterar Ciclo</h2>
+                <p className="text-xs text-neutral-500 mt-0.5">Muda o mês que esta fatura aparece nos Relatórios.</p>
+              </div>
+              <button onClick={() => setEditingDate(null)} className="text-neutral-400 hover:text-neutral-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div>
+              <p className="text-sm text-neutral-600 mb-2 truncate font-medium">{editingDate.name}</p>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">Data de referência do ciclo</label>
+              <input
+                type="date"
+                value={newDateValue}
+                onChange={e => setNewDateValue(e.target.value)}
+                className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-xs text-neutral-400 mt-1">Ex: para aparecer em Abr/26, escolha qualquer data de abril de 2026.</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setEditingDate(null)}
+                className="flex-1 px-4 py-2 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-600 hover:bg-neutral-50">
+                Cancelar
+              </button>
+              <button onClick={handleSaveDate} disabled={savingDate || !newDateValue}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50">
+                <Save size={14} /> {savingDate ? 'Salvando…' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
