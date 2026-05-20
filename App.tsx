@@ -19,6 +19,35 @@ import { Transaction, InvoiceFile, Category, Tag, CardIssuer, MatchStatus, Syste
 import { INITIAL_CATEGORIES, DEFAULT_TAGS } from './constants/initialData.ts';
 import { Toast, ToastMessage } from './components/ui/Toast.tsx';
 
+/**
+ * Lê o PDF, encontra o magic header `%PDF-` e descarta qualquer lixo antes dele.
+ *
+ * Caso real: fatura Inter de mai/2026 vinha com 415 KB de bytes nulos antes do magic.
+ * Preview/Adobe são tolerantes, mas o validador do Anthropic (e outros) exige magic
+ * nos primeiros 1 KB — sem trim a chamada falha com "The PDF specified was not valid".
+ */
+async function sanitizePdfToBase64(file: File): Promise<string> {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  // Procura "%PDF-" (0x25 0x50 0x44 0x46 0x2D)
+  let offset = -1;
+  for (let i = 0; i < buf.length - 5; i++) {
+    if (
+      buf[i] === 0x25 && buf[i + 1] === 0x50 && buf[i + 2] === 0x44 &&
+      buf[i + 3] === 0x46 && buf[i + 4] === 0x2D
+    ) { offset = i; break; }
+  }
+  if (offset < 0) throw new Error('Arquivo não contém um PDF válido (magic %PDF- ausente).');
+  const trimmed = offset === 0 ? buf : buf.subarray(offset);
+
+  // base64 em chunks para evitar stack overflow do String.fromCharCode(...big)
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < trimmed.length; i += CHUNK) {
+    binary += String.fromCharCode(...trimmed.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
 const AppContent: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -173,12 +202,7 @@ const AppContent: React.FC = () => {
     navigate('/review');
 
     try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.readAsDataURL(uploadedFiles[0]);
-      });
-      const base64 = await base64Promise;
+      const base64 = await sanitizePdfToBase64(uploadedFiles[0]);
       const extractedData = await extractInvoiceData(base64, issuer);
       const aiSuggestions = await categorizeTransactions(
         extractedData.map(d => d.description),
