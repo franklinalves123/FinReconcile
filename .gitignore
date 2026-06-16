@@ -27,6 +27,7 @@ dist-ssr
 ._*
 
 # Variáveis de ambiente locais — NUNCA versionar
+.env
 .env.local
 .env.*.local
 .vercel
