@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase.ts';
 import { ai, apiKey, useEdgeFunction, aiConfig } from './client.ts';
 import { buildExtractInvoicePrompt } from './prompts.ts';
 import { extractInvoiceDataWithOpenAI } from './openaiClient.ts';
-import { extractInvoiceDataWithAnthropic } from './anthropicClient.ts';
+import { extractInvoiceDataWithAnthropic, INCOMPLETE_DOCUMENT_CODE } from './anthropicClient.ts';
 import type { ExtractedTransaction } from './types.ts';
 
 /**
@@ -68,6 +68,9 @@ export async function extractInvoiceData(
     try {
       return await extractInvoiceDataWithAnthropic(fileBase64, issuer);
     } catch (error) {
+      // PDF incompleto/ilegível é definitivo: nenhum outro provedor lê o que não está
+      // no arquivo. Propaga a mensagem clara em vez de soterrá-la sob erros de fallback.
+      if ((error as { code?: string })?.code === INCOMPLETE_DOCUMENT_CODE) throw error;
       const msg = error instanceof Error ? error.message : String(error);
       console.warn('[AI Fallback] Anthropic falhou na extração, tentando Gemini:', msg);
       errors.push(`Anthropic: ${msg}`);

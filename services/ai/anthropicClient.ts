@@ -31,6 +31,83 @@ function stripCodeFences(text: string): string {
   return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 }
 
+/** Código de erro definitivo: o PDF está incompleto/ilegível (ex.: só a página de resumo).
+ *  O orquestrador NÃO deve tentar outros provedores — nenhum extrator lê transações
+ *  que não estão no arquivo. */
+export const INCOMPLETE_DOCUMENT_CODE = 'INCOMPLETE_DOCUMENT';
+
+function incompleteDocumentError(prose: string): Error {
+  const e = new Error(
+    'A fatura enviada parece incompleta ou ilegível (provável PDF com páginas faltando — ' +
+    'só a página de resumo). O modelo respondeu: "' +
+    prose.replace(/\s+/g, ' ').trim().slice(0, 300) + '"'
+  );
+  (e as Error & { code?: string }).code = INCOMPLETE_DOCUMENT_CODE;
+  return e;
+}
+
+/** Localiza o primeiro objeto JSON balanceado no texto, ciente de strings e escapes
+ *  (não se confunde com chaves dentro de valores string). Retorna null se truncado. */
+function extractFirstJsonObject(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+    } else if (ch === '"') inStr = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}' && --depth === 0) return text.slice(start, i + 1);
+  }
+  return null; // chaves desbalanceadas → resposta truncada antes de fechar o JSON
+}
+
+/**
+ * Converte a resposta textual do Claude em transações, tolerando prosa e cercas markdown.
+ * Substitui o `JSON.parse(text)` ingênuo, que quebrava com "unexpected character at line 1
+ * column 1" sempre que o modelo prefixava qualquer texto antes do JSON.
+ *
+ * - JSON puro ou em cerca markdown → extrai normalmente (caminho feliz).
+ * - Explicação longa + pouquíssimas transações → o modelo está avisando que o PDF está
+ *   incompleto; lança erro definitivo com a explicação (NÃO importa o JSON parcial:
+ *   num app de reconciliação, dado incompleto é pior que erro explícito).
+ * - JSON truncado (não fecha) → erro pedindo nova tentativa.
+ */
+export function parseInvoiceTransactions(text: string): ExtractedTransaction[] {
+  const cleaned = stripCodeFences(text || '');
+
+  // Caminho feliz: a resposta é (essencialmente) JSON puro.
+  try {
+    const r = JSON.parse(cleaned);
+    if (Array.isArray(r.transactions)) return r.transactions;
+  } catch { /* segue para extração tolerante a prosa */ }
+
+  // Resposta com prosa em volta do JSON.
+  const jsonStr = extractFirstJsonObject(cleaned) ?? extractFirstJsonObject(text);
+  if (jsonStr) {
+    let txs: ExtractedTransaction[] | null = null;
+    try {
+      const r = JSON.parse(jsonStr);
+      if (Array.isArray(r.transactions)) txs = r.transactions;
+    } catch { /* JSON malformado → cai para o erro abaixo */ }
+
+    const prose = text.replace(jsonStr, '').replace(/```(?:json)?/gi, '').trim();
+    // Explicação longa + quase nenhuma transação = aviso de PDF incompleto/recusa.
+    // (Uma fatura completa retorna muitas transações e ~nenhuma prosa.)
+    if (prose.length > 80 && (!txs || txs.length <= 2)) throw incompleteDocumentError(prose);
+    if (txs) return txs;
+  }
+
+  // Nada utilizável.
+  if (/^[[{]/.test(cleaned)) {
+    throw new Error('Resposta da IA truncada antes de fechar o JSON (fatura muito grande?). Tente novamente.');
+  }
+  throw incompleteDocumentError(text.trim() || '(resposta vazia)');
+}
+
 async function callAnthropic(
   messages: object[],
   maxTokens = 2048,
@@ -100,9 +177,8 @@ Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markd
     },
   ];
 
-  const text = await callAnthropic(messages, 8192, ANTHROPIC_MODEL_EXTRACT);
-  const result = JSON.parse(text || '{"transactions":[]}');
-  return result.transactions || [];
+  const text = await callAnthropic(messages, 16384, ANTHROPIC_MODEL_EXTRACT);
+  return parseInvoiceTransactions(text);
 }
 
 /**
@@ -123,7 +199,10 @@ Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markd
   const messages = [{ role: 'user', content: prompt }];
   const text = await callAnthropic(messages, 4096, ANTHROPIC_MODEL_CATEGORIZE);
   console.log(`[Categorizer] Anthropic raw response (${descriptions.length} items):`, text?.slice(0, 200));
-  const result = JSON.parse(text || '{"suggestions":[]}');
+  // Claude não tem JSON mode: pode prefixar prosa/cercas. JSON.parse direto quebraria
+  // em "line 1 column 1" — extrai o objeto balanceado antes de parsear (reusa o helper).
+  const jsonStr = extractFirstJsonObject(text || '') ?? '{"suggestions":[]}';
+  const result = JSON.parse(jsonStr);
   const suggestions: CategorySuggestion[] = result.suggestions || [];
 
   // Mapeia por índice com description original — não depende de string match.
