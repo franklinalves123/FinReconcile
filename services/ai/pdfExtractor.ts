@@ -133,7 +133,10 @@ async function extractWithGemini(
               properties: {
                 purchaseDate: { type: Type.STRING },
                 description:  { type: Type.STRING },
-                amount:       { type: Type.NUMBER }
+                amount:       { type: Type.NUMBER },
+                // Sem este campo o structured output do Gemini descarta o marcador de
+                // estorno que a regra 2a do prompt manda emitir.
+                type:         { type: Type.STRING, enum: ['expense', 'income'] }
               }
             }
           }

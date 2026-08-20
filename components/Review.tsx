@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Transaction, SortConfig, Category, CardIssuer, Tag } from '../types.ts';
 import { Check, Edit2, ArrowRight, X, Save, CreditCard, Tag as TagIcon, Layers, Trash2, Plus, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from './ui/Button.tsx';
-import { parseBRLAmount } from '../services/dataService.ts';
+import { parseBRLAmount, signedAmount } from '../services/dataService.ts';
 
 interface ReviewProps {
   transactions: Transaction[];
@@ -140,9 +140,11 @@ export const Review: React.FC<ReviewProps> = ({
     return `${day}/${month}/${year}`;
   };
 
-  const extractedTotal = transactions.reduce((sum, t) => sum + t.amount, 0);
+  // Soma assinada: estornos entram como crédito e reduzem o total, igual ao total da fatura.
+  const extractedTotal = transactions.reduce((sum, t) => sum + signedAmount(t), 0);
   const hasDivergence = expectedTotal != null && Math.abs(extractedTotal - expectedTotal) > 0.5;
   const divergenceAmount = expectedTotal != null ? expectedTotal - extractedTotal : 0;
+  const isMissing = divergenceAmount > 0;
 
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col animate-fade-in relative">
@@ -166,8 +168,14 @@ export const Review: React.FC<ReviewProps> = ({
             <span className="text-amber-700 ml-1">
               A fatura indica {expectedTotal!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} mas
               foram extraídos {extractedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
-              Faltam {divergenceAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} —
-              possíveis transações não capturadas (verifique seções de cartões adicionais ou internacionais no PDF).
+              {isMissing ? (
+                <> Faltam {divergenceAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} —
+                possíveis transações não capturadas (verifique seções de cartões adicionais ou internacionais no PDF).</>
+              ) : (
+                <> Sobram {Math.abs(divergenceAmount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} —
+                o extraído passou do total informado (verifique se algum estorno ou crédito foi marcado como despesa,
+                ou se um pagamento de fatura entrou como lançamento).</>
+              )}
             </span>
           </div>
         </div>
@@ -222,8 +230,8 @@ export const Review: React.FC<ReviewProps> = ({
                                {t.cardIssuer}
                             </span>
                         </div>
-                        <div className="col-span-1 text-sm text-neutral-900 font-bold text-right">
-                            {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <div className={`col-span-1 text-sm font-bold text-right ${t.type === 'income' ? 'text-green-600' : 'text-neutral-900'}`}>
+                            {t.type === 'income' ? '+' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </div>
                         <div className="col-span-2 flex items-center gap-1">
                             <select 

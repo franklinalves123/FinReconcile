@@ -23,6 +23,18 @@ export function parseBRLAmount(value: unknown): number {
 }
 
 /**
+ * Valor com sinal para somatórios: despesa soma positivo, estorno/crédito soma negativo.
+ *
+ * `amount` é SEMPRE positivo no app inteiro — o sinal vive em `type` (ver Dashboard.tsx:42-43
+ * e services/dataService.ts:168). Todo total que mistura despesas e créditos precisa passar
+ * por aqui; somar `amount` cru infla o resultado pelo dobro de cada estorno.
+ */
+export function signedAmount(t: { amount: number; type?: 'expense' | 'income' }): number {
+  const value = Number(t.amount) || 0;
+  return t.type === 'income' ? -value : value;
+}
+
+/**
  * SERVIÇO DE DADOS RESILIENTE
  * Usamos mapeamento explícito para evitar erros de 'schema cache' do Supabase
  */

@@ -13,6 +13,7 @@ import {
   Tag as TagIcon, Pencil, Save, Check
 } from 'lucide-react';
 import { Button } from './ui/Button.tsx';
+import { signedAmount } from '../services/dataService.ts';
 
 interface ReportsProps {
   allTransactions: Transaction[];
@@ -106,7 +107,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
 
       const { label, order } = getCycleInfo(t, invoiceDateMap);
       if (!map[label]) map[label] = { total: 0, order };
-      map[label].total += Number(t.amount || 0);
+      map[label].total += signedAmount(t);
     });
     return Object.keys(map)
       .map(name => ({ name, total: map[name].total, order: map[name].order }))
@@ -119,11 +120,11 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
     const map: Record<string, { total: number, sub: Record<string, number> }> = {};
     filteredData.forEach(t => {
       if (!map[t.category]) map[t.category] = { total: 0, sub: {} };
-      map[t.category].total += Number(t.amount || 0);
+      map[t.category].total += signedAmount(t);
       // Usa o valor da string diretamente (incluindo sugestões da IA não cadastradas oficialmente).
       // Só cai em 'Sem Subcategoria' se o campo estiver vazio ou nulo.
       const subName = t.subcategory?.trim() || 'Sem Subcategoria';
-      map[t.category].sub[subName] = (map[t.category].sub[subName] || 0) + Number(t.amount || 0);
+      map[t.category].sub[subName] = (map[t.category].sub[subName] || 0) + signedAmount(t);
     });
 
     return Object.keys(map)
@@ -136,7 +137,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
   }, [filteredData]);
 
   const totals = useMemo(() => {
-    const currentTotal = filteredData.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    const currentTotal = filteredData.reduce((acc, t) => acc + signedAmount(t), 0);
     
     // Calcular comparativo se um ciclo estiver selecionado
     let variation = 0;
@@ -150,7 +151,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                   const matchesTag = selectedTag === 'all' || (t.tags && t.tags.includes(selectedTag));
                   return matchesCycle && matchesTag;
                 })
-                .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+                .reduce((acc, t) => acc + signedAmount(t), 0);
             variation = prevTotal > 0 ? ((currentTotal - prevTotal) / prevTotal) * 100 : 0;
         }
     }
@@ -159,7 +160,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
   }, [filteredData, selectedCycle, availableCycles, allTransactions, selectedTag]);
 
   const filteredTotal = useMemo(
-    () => filteredData.reduce((s, t) => s + (Number(t.amount) || 0), 0),
+    () => filteredData.reduce((s, t) => s + signedAmount(t), 0),
     [filteredData]
   );
 
@@ -457,7 +458,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
       );
       const checkedTotal = panelTxs
         .filter(t => checkedIds.has(t.id))
-        .reduce((s, t) => s + Number(t.amount), 0);
+        .reduce((s, t) => s + signedAmount(t), 0);
       const allChecked = panelTxs.length > 0 && panelTxs.every(t => checkedIds.has(t.id));
 
       return (
@@ -611,7 +612,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
               <div className="flex justify-between text-xs text-neutral-500">
                 <span>Total da categoria</span>
                 <span className="font-bold text-neutral-700">
-                  {catTxs.reduce((s, t) => s + Number(t.amount), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {catTxs.reduce((s, t) => s + signedAmount(t), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </div>
               {checkedIds.size > 0 && (

@@ -31,3 +31,7 @@ dist-ssr
 .env.local
 .env.*.local
 .vercel
+
+# Artefatos de trace do Nirvana-OS — briefs, logs de auditoria e outputs de dispatch
+.nirvana/
+outputs/

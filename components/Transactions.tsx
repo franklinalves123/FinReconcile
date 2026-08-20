@@ -3,7 +3,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Trash2, List, UploadCloud, Search, X, Pencil, Save } from 'lucide-react';
 import { Transaction, Category } from '../types.ts';
 import { Button } from './ui/Button.tsx';
-import { parseBRLAmount } from '../services/dataService.ts';
+import { parseBRLAmount, signedAmount } from '../services/dataService.ts';
 
 interface TransactionsProps {
   transactions: Transaction[];
@@ -120,7 +120,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
   const formatBRL = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const totalFiltered = filtered.reduce((s, t) => s + t.amount, 0);
+  const totalFiltered = filtered.reduce((s, t) => s + signedAmount(t), 0);
 
   return (
     <div className="animate-fade-in space-y-6">

@@ -131,7 +131,11 @@ const AppContent: React.FC = () => {
 
   /**
    * Remove do array extraído as transações que já existem no histórico do usuário.
-   * Match por: mesmo emissor + mesma data + mesmo valor (±R$0,02) + descrição IDÊNTICA (normalizada).
+   * Match por: mesmo emissor + mesma data + mesmo valor (±R$0,02) + mesmo tipo + descrição IDÊNTICA (normalizada).
+ *
+ * O tipo entra na chave porque uma compra e o estorno dela aparecem na fatura com data,
+ * valor e descrição idênticos (ex: MP MERCADOLIVRE 11/07 R$ 19,99, débito e crédito).
+ * Sem ele, numa reimportação o débito casaria com o crédito do histórico e sumiria.
    *
    * Usar match exato de descrição evita falso-positivo em parcelas mensais:
    * "IUGU*CLINTHUB (Parcela 07 de 12)" ≠ "IUGU*CLINTHUB (Parcela 08 de 12)" → NÃO é duplicata.
@@ -150,6 +154,7 @@ const AppContent: React.FC = () => {
         e =>
           e.purchaseDate === t.purchaseDate &&
           Math.abs(e.amount - t.amount) < 0.02 &&
+          (e.type || 'expense') === (t.type || 'expense') &&
           normalize(e.description) === normalize(t.description)
       );
       return !isDuplicate;
@@ -244,6 +249,8 @@ const AppContent: React.FC = () => {
           purchaseDate: item.purchaseDate,
           description: item.description,
           amount: parseBRLAmount(item.amount),
+          // O sinal vive em `type` — `amount` permanece positivo (ver Dashboard.tsx:42-43).
+          type: item.type === 'income' ? 'income' : 'expense',
           category: resolvedCategory,
           subcategory: resolvedSubcategory,
           confidence: suggestion?.confidence,

@@ -5,6 +5,7 @@ import { CheckCircle, TrendingUp, Calendar, CreditCard, ExternalLink, ArrowRight
 import { InvoiceFile, Transaction } from '../types.ts';
 import { Button } from './ui/Button.tsx';
 import { buildInvoiceDateMap, getCycleInfo } from '../lib/cycleUtils.ts';
+import { signedAmount } from '../services/dataService.ts';
 
 interface DashboardProps {
   files: InvoiceFile[];
@@ -26,7 +27,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ files, allTransactions, on
     allTransactions.forEach(t => {
       const { label, order } = getCycleInfo(t, invoiceDateMap);
       if (!map[label]) map[label] = { total: 0, order };
-      map[label].total += Number(t.amount || 0);
+      map[label].total += signedAmount(t);
     });
 
     return Object.keys(map)

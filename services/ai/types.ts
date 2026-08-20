@@ -7,7 +7,8 @@
 export interface ExtractedTransaction {
   purchaseDate: string;   // YYYY-MM-DD
   description: string;
-  amount: number;
+  amount: number;         // SEMPRE positivo — o sinal vive em `type`
+  type?: 'expense' | 'income';  // 'income' = estorno / crédito / devolução. Ausente = 'expense'.
 }
 
 export interface CategorySuggestion {
