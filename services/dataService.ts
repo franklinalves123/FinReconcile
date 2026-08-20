@@ -23,15 +23,22 @@ export function parseBRLAmount(value: unknown): number {
 }
 
 /**
- * Valor com sinal para somatórios: despesa soma positivo, estorno/crédito soma negativo.
+ * Contribuição de uma transação ao total de GASTOS. Não é saldo de fluxo de caixa.
  *
- * `amount` é SEMPRE positivo no app inteiro — o sinal vive em `type` (ver Dashboard.tsx:42-43
- * e services/dataService.ts:168). Todo total que mistura despesas e créditos precisa passar
- * por aqui; somar `amount` cru infla o resultado pelo dobro de cada estorno.
+ * `amount` é SEMPRE positivo no app inteiro — o sinal vive em `type`:
+ *   - 'expense' soma (+): saiu dinheiro.
+ *   - 'refund'  soma (−): uma saída anterior foi cancelada (estorno, crédito, devolução).
+ *   - 'income'  vale 0: receita não é gasto, então não pertence a um total de gastos —
+ *     nem somando, nem subtraindo. O único contexto que precisa dela é o saldo de fluxo
+ *     de caixa do Dashboard, que soma as receitas em separado e não passa por aqui.
+ *
+ * Todo total que mistura os três tipos precisa passar por aqui; somar `amount` cru infla
+ * o resultado pelo dobro de cada estorno.
  */
-export function signedAmount(t: { amount: number; type?: 'expense' | 'income' }): number {
+export function signedAmount(t: { amount: number; type?: 'expense' | 'income' | 'refund' }): number {
+  if (t.type === 'income') return 0;
   const value = Number(t.amount) || 0;
-  return t.type === 'income' ? -value : value;
+  return t.type === 'refund' ? -value : value;
 }
 
 /**
@@ -77,7 +84,7 @@ export const dataService = {
       status: t.status,
       cardIssuer: t.card_issuer || 'Outros',
       notes: t.notes || '',
-      type: (t.type as 'expense' | 'income') || 'expense',
+      type: (t.type as 'expense' | 'income' | 'refund') || 'expense',
       accountId: t.account_id || undefined,
       installmentId: t.installment_id || undefined,
     })) || [];

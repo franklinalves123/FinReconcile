@@ -230,8 +230,11 @@ export const Review: React.FC<ReviewProps> = ({
                                {t.cardIssuer}
                             </span>
                         </div>
-                        <div className={`col-span-1 text-sm font-bold text-right ${t.type === 'income' ? 'text-green-600' : 'text-neutral-900'}`}>
-                            {t.type === 'income' ? '+' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <div className={`col-span-1 text-sm font-bold text-right ${t.type === 'refund' ? 'text-blue-600' : 'text-neutral-900'}`}>
+                            {t.type === 'refund' ? '-' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {t.type === 'refund' && (
+                              <span className="block text-[9px] font-bold uppercase tracking-wide text-blue-500">estorno</span>
+                            )}
                         </div>
                         <div className="col-span-2 flex items-center gap-1">
                             <select 

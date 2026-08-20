@@ -249,8 +249,9 @@ const AppContent: React.FC = () => {
           purchaseDate: item.purchaseDate,
           description: item.description,
           amount: parseBRLAmount(item.amount),
-          // O sinal vive em `type` — `amount` permanece positivo (ver Dashboard.tsx:42-43).
-          type: item.type === 'income' ? 'income' : 'expense',
+          // O sinal vive em `type` — `amount` permanece positivo (ver services/dataService.ts:signedAmount).
+          // Fatura de cartão só produz 'expense' ou 'refund'; 'income' nunca vem daqui.
+          type: item.type === 'refund' ? 'refund' : 'expense',
           category: resolvedCategory,
           subcategory: resolvedSubcategory,
           confidence: suggestion?.confidence,

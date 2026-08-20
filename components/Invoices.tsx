@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { FileText, Trash2, Calendar, CreditCard, UploadCloud, AlertTriangle, Pencil, X, Save } from 'lucide-react';
 import { InvoiceFile, Transaction } from '../types.ts';
 import { Button } from './ui/Button.tsx';
+import { signedAmount } from '../services/dataService.ts';
 
 interface InvoicesProps {
   files: InvoiceFile[];
@@ -48,7 +49,7 @@ export const Invoices: React.FC<InvoicesProps> = ({
     const map: Record<string, number> = {};
     allTransactions.forEach(t => {
       if (t.invoiceId && t.invoiceId !== 'manual-entry') {
-        map[t.invoiceId] = (map[t.invoiceId] || 0) + t.amount;
+        map[t.invoiceId] = (map[t.invoiceId] || 0) + signedAmount(t);
       }
     });
     return map;

@@ -155,7 +155,8 @@ export async function extractInvoiceDataWithAnthropic(
   const basePrompt = buildExtractInvoicePrompt(issuer);
   const prompt = `${basePrompt}
 Retorne SOMENTE um JSON válido, sem texto adicional nem blocos de código markdown:
-{"transactions": [{"purchaseDate": "YYYY-MM-DD", "description": "...", "amount": 0.00, "type": "expense"}]}`;
+{"transactions": [{"purchaseDate": "YYYY-MM-DD", "description": "...", "amount": 0.00, "type": "expense"}]}
+O campo "type" aceita SOMENTE "expense" ou "refund" (estorno/crédito de compra, regra 2a).`;
 
   const messages = [
     {

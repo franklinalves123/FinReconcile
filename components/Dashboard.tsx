@@ -40,13 +40,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ files, allTransactions, on
     const currentCycleLabel = cycleData[cycleData.length - 1]?.name || '';
     const filtered = allTransactions.filter(t => getCycleInfo(t, invoiceDateMap).label === currentCycleLabel);
 
+    // Receita de verdade, só. Estorno NÃO entra aqui: não é dinheiro que entrou,
+    // é despesa cancelada — ele vive em totalExpense, com sinal negativo.
     const totalIncome  = filtered.filter(t => t.type === 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-    const totalExpense = filtered.filter(t => t.type !== 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    // Despesa líquida: compra soma, estorno subtrai, receita fica fora (ver signedAmount).
+    const totalExpense = filtered.reduce((acc, t) => acc + signedAmount(t), 0);
     const balance = totalIncome - totalExpense;
 
     const catMap: Record<string, number> = {};
     filtered.filter(t => t.type !== 'income').forEach(t => {
-        catMap[t.category] = (catMap[t.category] || 0) + (Number(t.amount) || 0);
+        catMap[t.category] = (catMap[t.category] || 0) + signedAmount(t);
     });
 
     const categoryBreakdown = Object.keys(catMap).map(key => ({

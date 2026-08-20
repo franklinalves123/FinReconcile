@@ -14,7 +14,7 @@ interface TransactionsProps {
 }
 
 interface EditDraft {
-  type: 'expense' | 'income';
+  type: 'expense' | 'income' | 'refund';
   description: string;
   amount: string;
   purchaseDate: string;
@@ -74,7 +74,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
   const openEdit = (t: Transaction) => {
     setEditingTx(t);
     setEditDraft({
-      type:         t.type === 'income' ? 'income' : 'expense',
+      type:         t.type === 'income' ? 'income' : t.type === 'refund' ? 'refund' : 'expense',
       description:  t.description,
       amount:       t.amount.toFixed(2).replace('.', ','),
       purchaseDate: t.purchaseDate || t.date,
@@ -228,8 +228,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                       <div className="col-span-4 text-neutral-800 truncate" title={t.description}>
                         {t.description}
                       </div>
-                      <div className={`col-span-2 text-right font-bold ${t.type === 'income' ? 'text-green-600' : 'text-neutral-900'}`}>
-                        {t.type === 'income' ? '+' : ''}{formatBRL(t.amount)}
+                      <div className={`col-span-2 text-right font-bold ${t.type === 'income' ? 'text-green-600' : t.type === 'refund' ? 'text-blue-600' : 'text-neutral-900'}`}>
+                        {t.type === 'income' ? '+' : t.type === 'refund' ? '-' : ''}{formatBRL(t.amount)}
                       </div>
                       <div className="col-span-2 flex flex-col gap-0.5">
                         <span className="inline-block bg-neutral-100 text-neutral-600 text-[10px] font-bold px-2 py-0.5 rounded-full truncate max-w-full">
@@ -306,7 +306,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
               <div>
                 <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5">Tipo</label>
                 <div className="flex gap-2">
-                  {(['expense', 'income'] as const).map(tp => (
+                  {(['expense', 'refund', 'income'] as const).map(tp => (
                     <button
                       key={tp}
                       onClick={() => setEditDraft(d => d ? { ...d, type: tp } : d)}
@@ -314,11 +314,13 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         editDraft.type === tp
                           ? tp === 'expense'
                             ? 'bg-red-50 border-red-300 text-red-600'
-                            : 'bg-green-50 border-green-300 text-green-600'
+                            : tp === 'refund'
+                              ? 'bg-blue-50 border-blue-300 text-blue-600'
+                              : 'bg-green-50 border-green-300 text-green-600'
                           : 'bg-white border-neutral-200 text-neutral-400 hover:border-neutral-300'
                       }`}
                     >
-                      {tp === 'expense' ? 'Despesa' : 'Receita'}
+                      {tp === 'expense' ? 'Despesa' : tp === 'refund' ? 'Estorno' : 'Receita'}
                     </button>
                   ))}
                 </div>

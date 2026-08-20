@@ -136,7 +136,7 @@ async function extractWithGemini(
                 amount:       { type: Type.NUMBER },
                 // Sem este campo o structured output do Gemini descarta o marcador de
                 // estorno que a regra 2a do prompt manda emitir.
-                type:         { type: Type.STRING, enum: ['expense', 'income'] }
+                type:         { type: Type.STRING, enum: ['expense', 'refund'] }
               }
             }
           }

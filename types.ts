@@ -26,7 +26,7 @@ export interface Transaction {
   matchedTransactionId?: string;
   notes?: string;
   // Life OS extensions
-  type?: 'expense' | 'income';
+  type?: 'expense' | 'income' | 'refund';
   accountId?: string;
   installmentId?: string;
 }

@@ -8,7 +8,8 @@ export interface ExtractedTransaction {
   purchaseDate: string;   // YYYY-MM-DD
   description: string;
   amount: number;         // SEMPRE positivo — o sinal vive em `type`
-  type?: 'expense' | 'income';  // 'income' = estorno / crédito / devolução. Ausente = 'expense'.
+  type?: 'expense' | 'refund';  // 'refund' = estorno / crédito / devolução de compra. Ausente = 'expense'.
+                                // Fatura de cartão NUNCA produz receita — 'income' não é valor válido aqui.
 }
 
 export interface CategorySuggestion {

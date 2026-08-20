@@ -119,6 +119,8 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
   const categoryStats = useMemo(() => {
     const map: Record<string, { total: number, sub: Record<string, number> }> = {};
     filteredData.forEach(t => {
+      // Receita não é gasto: fora da quebra por categoria, igual ao Dashboard.
+      if (t.type === 'income') return;
       if (!map[t.category]) map[t.category] = { total: 0, sub: {} };
       map[t.category].total += signedAmount(t);
       // Usa o valor da string diretamente (incluindo sugestões da IA não cadastradas oficialmente).
@@ -171,9 +173,12 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
       t.cardIssuer || '',
       t.amount.toFixed(2).replace('.', ','),
       t.category || '',
-      t.subcategory || ''
+      t.subcategory || '',
+      // Coluna nova no FIM: preserva a posição e o significado das anteriores.
+      // `Valor` continua magnitude positiva; o sinal quem diz é `Tipo`.
+      t.type === 'refund' ? 'Estorno' : t.type === 'income' ? 'Receita' : 'Despesa'
     ].join(';'));
-    const csv = ['Data;Descrição;Banco;Valor;Categoria;Subcategoria', ...rows].join('\n');
+    const csv = ['Data;Descrição;Banco;Valor;Categoria;Subcategoria;Tipo', ...rows].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -413,8 +418,8 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                                   <td className="px-6 py-3 text-xs font-bold uppercase text-neutral-400">
                                       {t.cardIssuer || '—'}
                                   </td>
-                                  <td className="px-6 py-3 text-right font-black text-neutral-900">
-                                      {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                  <td className={`px-6 py-3 text-right font-black ${t.type === 'refund' ? 'text-blue-600' : 'text-neutral-900'}`}>
+                                      {t.type === 'refund' ? '-' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                   </td>
                                   <td className="px-6 py-3">
                                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-primary uppercase">
@@ -452,7 +457,7 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
 
     {/* Painel lateral — detalhamento de categoria */}
     {openCategory && (() => {
-      const catTxs = filteredData.filter(t => t.category === openCategory);
+      const catTxs = filteredData.filter(t => t.category === openCategory && t.type !== 'income');
       const panelTxs = catTxs.filter(t =>
         panelSearch === '' || t.description.toLowerCase().includes(panelSearch.toLowerCase())
       );
@@ -590,8 +595,8 @@ export const Reports: React.FC<ReportsProps> = ({ allTransactions, categories, t
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className={`text-sm font-bold ${checkedIds.has(t.id) ? 'text-primary' : 'text-neutral-700'}`}>
-                          {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <span className={`text-sm font-bold ${checkedIds.has(t.id) ? 'text-primary' : t.type === 'refund' ? 'text-blue-600' : 'text-neutral-700'}`}>
+                          {t.type === 'refund' ? '-' : ''}{t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                         {onUpdateTransaction && (
                           <button onClick={() => startEdit(t)} title="Editar"
